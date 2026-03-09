@@ -1,6 +1,7 @@
 import os
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext, load_index_from_storage
 from llama_index.llms.deepseek import DeepSeek
+from llama_index.core.prompts import PromptTemplate
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 # 配置
@@ -21,7 +22,22 @@ else:
     index.storage_context.persist(persist_dir="storage")
     print("索引已创建并保存")
 
-query_engine = index.as_query_engine()
+# 在system prompt里加约束，让LLM只基于检索内容回答
+qa_prompt = PromptTemplate(
+    "以下是相关的参考资料：\n"
+    "-----\n"
+    "{context_str}\n"
+    "-----\n"
+    "请严格基于以上参考资料回答问题。如果资料中没有相关信息，请直接说'文档中没有相关内容'，不要使用你自己的知识。\n"
+    "问题：{query_str}\n"
+    "回答："
+)
+
+query_engine = index.as_query_engine(
+    similarity_top_k=3,
+    response_mode="compact",
+    text_qa_template=qa_prompt
+)
 
 while True:
     question = input("\n问点什么（输入q退出）：")
