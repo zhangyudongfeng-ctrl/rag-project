@@ -7,7 +7,7 @@
 支持三种策略：
     1. fixed     — 固定字符数切片（基线）
     2. paragraph — 按段落边界切片，尊重文本自然结构
-    3. semantic  — 按语义相似度切片（需要embedding模型）
+    3. heading   — 按标题切片
 
 核心思路：
     清洗后的txt → 按策略切成chunks → 每个chunk附带元数据 → 喂给LlamaIndex建索引
@@ -30,7 +30,7 @@ from llama_index.core.schema import TextNode
 class Chunk:
     """一个切片单元"""
     text: str                          # 切片内容
-    metadata: dict = field(default_factory=dict)  # 元数据
+    metadata: dict = field(default_factory=dict)  # 元数据，保证每次创建新Chunk时，不共用一个字典对象
 
     def __len__(self):
         return len(self.text)
@@ -42,15 +42,18 @@ class Chunk:
 
 # ==========================================
 # 策略一：固定大小切片（基线）
+# 从头到尾滑动窗口，每次走chunk_size步，退回overlap步，尽量在句号处断开。
 # ==========================================
-def chunk_fixed(text: str, chunk_size: int = 512, overlap: int = 100) -> List[Chunk]:
+def chunk_fixed(text: str, max_size: int = 512, overlap: int = 100) -> List[Chunk]:
     """
     按固定字符数切片，带重叠。
     
     这是最简单的策略，也是对比基线。
+    .
     问题：会在句子中间断开，破坏语义完整性。
     
     参数：
+
         chunk_size: 每个切片的目标字符数
         overlap:    相邻切片的重叠字符数，防止边界信息丢失
     """
@@ -58,7 +61,7 @@ def chunk_fixed(text: str, chunk_size: int = 512, overlap: int = 100) -> List[Ch
     start = 0
 
     while start < len(text):
-        end = start + chunk_size
+        end = start + max_size
 
         # 如果不是最后一片，尝试在句号/换行处断开，避免切断句子
         if end < len(text):
@@ -111,6 +114,8 @@ def chunk_by_paragraph(text: str, max_size: int = 512, min_size: int = 50) -> Li
     chunks = []
     buffer = ""
 
+    # 因为bge-small-zh的max_sequence_length是512 tokens，超过的部分直接截断，等于白存
+    # 所以把一个超长的段落按句子切
     for para in paragraphs:
         # 如果当前段落本身就超长，先单独处理
         if len(para) > max_size:
@@ -184,9 +189,11 @@ def chunk_by_heading(text: str, max_size: int = 512, min_size: int = 50) -> List
         re.MULTILINE
     )
 
-    # 找到所有标题位置
+    # 把找到的标题转为列表，为什么要转列表？-> 迭代器只是存放第一个内容，后续所有内容必须要通过迭代器位移来获取
+    # list()会一次性把所有结果算出来存进内存，之后才能随意索引、反复访问
     matches = list(heading_pattern.finditer(text))
 
+    # 抽象一下：--内容1-- [start1]标题1[end1] --内容2-- [start2]标题2[end2] --
     if not matches:
         # 没找到标题结构，退回段落策略
         return chunk_by_paragraph(text, max_size, min_size)
@@ -225,7 +232,7 @@ def chunk_by_heading(text: str, max_size: int = 512, min_size: int = 50) -> List
 
 
 # ==========================================
-# 辅助函数
+# 辅助函数：策略一和策略二中需要用上的函数
 # ==========================================
 def _split_paragraphs(text: str) -> List[str]:
     """按双换行拆段落，过滤空段"""
@@ -314,6 +321,7 @@ def _get_position_label(index: int, total: int) -> str:
 
 # ==========================================
 # 转换为 LlamaIndex 节点
+# 框架流程：SimpleDirectoryReader → 自动切片 → 生成TextNode → 建索引
 # ==========================================
 def chunks_to_nodes(chunks: List[Chunk]) -> List[TextNode]:
     """

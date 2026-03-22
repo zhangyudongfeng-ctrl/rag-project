@@ -40,7 +40,7 @@ else:
         "./data_cleaned", 
         file_metadata=get_book_metadata
     ).load_data()   # 这一步之后，所有的 documents 对象里，都已经自带了 book_name 这个元数据
-    index = VectorStoreIndex.from_documents(documents)
+    index = VectorStoreIndex.from_documents(documents)  # from_documents内部先把Document按默认策略（SentenceSplitter, chunk_size=1024）切成Node，再算embedding建索引。V4就是把这个切片步骤拿出来自己控制。
     index.storage_context.persist(persist_dir="storage")
     print("索引已创建并保存")
 
@@ -83,7 +83,11 @@ try:
         for i, node in enumerate(response.source_nodes):
             print(f"\n片段{i+1}（相似度：{node.score:.3f}）：")
             print(node.text[:200])
-            print(f"\n 书名：{node.metadata}\n")
+            meta = node.metadata
+            # 尝试提取你关心的核心元数据，如果不存在就返回 'N/A'
+            file_name = meta.get("file_name", meta.get("source", "未知文件"))
+            print(f"\n 来源: {file_name}")
+            print(f" 完整元数据: {meta}") # 调试时可以保留，等结构稳定了再精简
         print(f"{'='*50}")
 except KeyboardInterrupt:
     print("\n已退出")

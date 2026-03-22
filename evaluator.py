@@ -63,12 +63,12 @@ class EvalResult:
     relevancy: float                # 相关性评分（LLM打分，1-5）
     
     # 元信息
-    category: str = ""              # 所属类别
-    latency_seconds: float = 0.0    # 回答耗时
-    retrieved_chunks: List[str]     # 检索到了什么chunk
-    prompt_tokens: int              # prompt大小
-    completion_tokens: int          # 回答消耗的tokens
-    context_length: int             # retrieval->context->generation中的context分析，在出现问题时有更完全的排查过程
+    category: str = ""                                              # 所属类别
+    latency_seconds: float = 0.0                                    # 回答耗时
+    retrieved_chunks: List[str] = field(default_factory=list)       # 检索到了什么chunk
+    prompt_tokens: int = 0                                          # prompt大小
+    completion_tokens: int = 0                                      # 回答消耗的tokens
+    context_length: int = 0         # retrieval->context->generation中的context分析，在出现问题时有更完全的排查过程
 
 
 # ==========================================
@@ -481,8 +481,65 @@ def eval_relevancy(question: str, answer: str, llm) -> float:
         return 0
 
 
+@dataclass
+class RAGContext:
+    """存放从 Response 解析出来的所有关键信息的容器"""
+    actual_answer: str
+    source_nodes: list
+    retrieved_chunks: List[str]
+    retrieved_sources: List[str]
+    top1_source: str
+    top1_score: float
+    context: str
+    prompt_tokens: int
+    completion_tokens: int
+
+# 处理Response对象，输出一个规范化的RAGContext
+def parse_response(response) -> RAGContext:
+    nodes = response.source_nodes or []
+    
+    # 提取信息
+    chunks = [n.text for n in nodes]
+    # 把一堆 Node 对象转化成一堆字符串（文件名）
+    sources = [n.metadata.get("source_file", "") for n in nodes]
+
+    # 确保 metadata 存在metadata，or的作用是处理属性存在但值为 None
+    meta = getattr(response, "metadata", {}) or {}
+    
+    # 构造并返回结构化对象
+    return RAGContext(
+        actual_answer=str(response),
+        source_nodes=nodes,
+        retrieved_chunks=chunks,
+        retrieved_sources=sources,
+        top1_source=sources[0] if sources else "",
+        top1_score=nodes[0].score if nodes else 0.0,
+        context="\n".join(chunks),
+        # token 统计：从 response 的元数据中提取
+        # 安全获取 Token 信息，处理可能为空的情况--- LlamaIndex 的 Response 对象在 metadata 中可能携带 token 信息，所以有个兜底 or 0
+        prompt_tokens = meta.get('prompt_tokens') or 0,
+        completion_tokens = meta.get('completion_tokens') or 0,
+    )
+
+# 检索评估和生成评估
+# 输入：case, RAGContext，llm, 可选参数(是否使用LLM评估)use_llm_judge
+# 输出：检索是否命中，关键词召回率，忠实度评分，相关性评分
+def search_generate_evaluation(case, ctx, llm, use_llm_judge):
+    # 检索评估
+    hit = eval_retrieval_hit(case.expected_source, ctx.retrieved_sources)
+    kw_recall = eval_keyword_recall(case.expected_keywords, ctx.actual_answer)
+
+    # 生成评估（可选）
+    faithfulness = 0.0
+    relevancy = 0.0
+    if use_llm_judge:
+        faithfulness = eval_faithfulness(case.question, ctx.actual_answer, ctx.context, llm)
+        relevancy = eval_relevancy(case.question, ctx.actual_answer, llm)
+    return hit, kw_recall, faithfulness, relevancy
+
+
 # ==========================================
-# 核心：运行评估
+# 核心：运行评估 -- 主要做了3件事：提取检索信息、统计tokens、检索评估和生成评估
 # ==========================================
 def run_evaluation(query_engine, llm, cases: List[TestCase] = None, 
                    use_llm_judge: bool = True) -> List[EvalResult]:
@@ -509,56 +566,28 @@ def run_evaluation(query_engine, llm, cases: List[TestCase] = None,
         latency = time.time() - start_time
 
         # 提取检索信息
-        actual_answer = str(response)
-        source_nodes = response.source_nodes    # 就是检索到的chunks
-        # 第一步：把一堆 Node 对象转化成一堆字符串（文件名）
-        retrieved_sources = [n.metadata.get("source_file", "") for n in source_nodes]
-        # 第二步：取 Top-1 的数据
-        # 这里的索引 [0] 指向的是相关性得分最高的那个 Chunk 的元数据
-        top1_source = retrieved_sources[0] if retrieved_sources else ""
-        top1_score = source_nodes[0].score if source_nodes else 0.0
+        ctx = parse_response(response)
 
-        # 为什么要分为2个context？本质不都是上下文吗？
-        # 拼接检索到的上下文（用于忠实度评估）
-        context = "\n".join([n.text for n in source_nodes])
-        retrieved_chunks = [n.text for n in source_nodes]
-
-        # token 统计：从 response 的元数据中提取
-        # LlamaIndex 的 Response 对象在 metadata 中可能携带 token 信息
-        prompt_tokens = 0
-        completion_tokens = 0
-        if hasattr(response, 'metadata') and response.metadata:
-            prompt_tokens = response.metadata.get('prompt_tokens', 0) or 0
-            completion_tokens = response.metadata.get('completion_tokens', 0) or 0
-        # 检索评估
-        hit = eval_retrieval_hit(case.expected_source, retrieved_sources)
-        kw_recall = eval_keyword_recall(case.expected_keywords, actual_answer)
-
-        # TODO 看到这一步
-        # 生成评估（可选）
-        faithfulness = 0.0
-        relevancy = 0.0
-        if use_llm_judge:
-            faithfulness = eval_faithfulness(case.question, actual_answer, context, llm)
-            relevancy = eval_relevancy(case.question, actual_answer, llm)
+        # 检索和生成评估
+        hit, kw_recall, faithfulness, relevancy = search_generate_evaluation(case, ctx, llm, use_llm_judge)
 
         result = EvalResult(
             question=case.question,
             expected_answer=case.expected_answer,
-            actual_answer=actual_answer,
+            actual_answer=ctx.actual_answer,
             retrieval_hit=hit,
-            top1_source=top1_source,
-            top1_score=top1_score,
-            retrieved_sources=retrieved_sources,
+            top1_source=ctx.top1_source,
+            top1_score=ctx.top1_score,
+            retrieved_sources=ctx.retrieved_sources,
             keyword_recall=kw_recall,
             faithfulness=faithfulness,
             relevancy=relevancy,
             category=case.category,
             latency_seconds=latency,
-            retrieved_chunks=retrieved_chunks,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            context_length=len(context),
+            retrieved_chunks=ctx.retrieved_chunks,
+            prompt_tokens=ctx.prompt_tokens,
+            completion_tokens=ctx.completion_tokens,
+            context_length=len(ctx.context),
         )
         results.append(result)
 
@@ -570,6 +599,7 @@ def run_evaluation(query_engine, llm, cases: List[TestCase] = None,
 
 # ==========================================
 # 报告生成
+# 先看总体平均指标->再看tokens->难易度不同的类别分析->看失败案例
 # ==========================================
 def print_report(results: List[EvalResult], run_name: str = ""):
     """打印评估报告"""
@@ -579,11 +609,18 @@ def print_report(results: List[EvalResult], run_name: str = ""):
         return
 
     # 总体指标
-    hit_rate = sum(1 for r in results if r.retrieval_hit) / total
-    avg_kw = sum(r.keyword_recall for r in results) / total
-    avg_faith = sum(r.faithfulness for r in results) / total
-    avg_rel = sum(r.relevancy for r in results) / total
-    avg_latency = sum(r.latency_seconds for r in results) / total
+    if total > 0:
+        hit_rate = sum(1 for r in results if r.retrieval_hit) / total
+        avg_kw = sum(r.keyword_recall for r in results) / total
+        avg_faith = sum(r.faithfulness for r in results) / total
+        avg_rel = sum(r.relevancy for r in results) / total
+        avg_latency = sum(r.latency_seconds for r in results) / total
+    else:
+        hit_rate = 0.0
+        avg_kw = 0.0
+        avg_faith = 0.0
+        avg_rel = 0.0
+        avg_latency = 0.0
 
     print(f"\n{'='*60}")
     print(f"评估报告" + (f"  [{run_name}]" if run_name else ""))
@@ -597,7 +634,10 @@ def print_report(results: List[EvalResult], run_name: str = ""):
     # token 和 context 统计
     total_prompt_tokens = sum(r.prompt_tokens for r in results)
     total_completion_tokens = sum(r.completion_tokens for r in results)
-    avg_context_len = sum(r.context_length for r in results) // total
+    if total > 0:
+        avg_context_len = sum(r.context_length for r in results) // total
+    else:
+        avg_context_len = 0
     print(f"Prompt tokens: {total_prompt_tokens:,} (总计)")
     print(f"输出 tokens:   {total_completion_tokens:,} (总计)")
     print(f"平均context:   {avg_context_len:,} 字符")
@@ -626,7 +666,7 @@ def print_report(results: List[EvalResult], run_name: str = ""):
     print(f"{'='*60}\n")
 
 
-def save_report(results: List[EvalResult], run_name: str = ""):
+def save_report(results: List[EvalResult], run_name: str = "mainV3"):
     """保存评估结果到 CSV，方便跨版本对比"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"eval_{run_name}_{timestamp}.csv" if run_name else f"eval_{timestamp}.csv"
