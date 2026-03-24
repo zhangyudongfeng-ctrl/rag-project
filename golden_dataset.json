@@ -312,7 +312,7 @@
     "difficulty": "normal"
   },
   {
-    "question": "燃烧吧！创这本小说的主角是谁？",
+    "question": "燃烧吧！剑这本小说的主角是谁？",
     "expected_answer": "土方岁三。测试同一问题不同问法的检索稳定性。",
     "expected_keywords": [
       "土方"

@@ -17,6 +17,7 @@ from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReran
 from llama_index.core.prompts import PromptTemplate
 
 from evaluator import run_evaluation, print_report, save_report
+from engine import build_query_engine
 
 # ==========================================
 # 配置（和 main.py 保持一致）
@@ -26,7 +27,6 @@ Settings.llm = DeepSeek(model="deepseek-chat")
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-zh-v1.5")
 
 STORAGE_DIR = "storage"
-
 
 def main():
     # 运行名称：用于区分不同版本的评估结果
@@ -42,22 +42,7 @@ def main():
     from llama_index.core import load_index_from_storage
     index = load_index_from_storage(storage_context)
 
-    # 配置查询引擎（和 main.py 保持一致）
-    reranker = FlagEmbeddingReranker(model="BAAI/bge-reranker-v2-m3", top_n=3)
-
-    qa_prompt = PromptTemplate(
-        "以下是相关的参考资料：\n-----\n{context_str}\n-----\n"
-        "请基于以上参考资料回答问题。可以基于资料内容进行合理推理，但不要编造资料中没有的信息。"
-        "如果资料中完全没有相关信息，请说'文档中没有相关内容'。\n"
-        "问题：{query_str}\n回答："
-    )
-
-    query_engine = index.as_query_engine(
-        similarity_top_k=10,
-        node_postprocessors=[reranker],
-        response_mode="compact",
-        text_qa_template=qa_prompt
-    )
+    query_engine = build_query_engine(index, mode="multi_query")
 
     # 运行评估
     print(f"\n开始评估 [{run_name}]...\n")
