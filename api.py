@@ -5,7 +5,7 @@ POST /query 接收问题，返回答案+出处+耗时
 
 import os
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 
 from llama_index.core import Settings, StorageContext, load_index_from_storage, VectorStoreIndex
@@ -19,7 +19,7 @@ from engine import build_query_engine
 # ==========================================
 # 配置
 # ==========================================
-os.environ["DEEPSEEK_API_KEY"] = "sk-47aa291d867345d0991602b8b9b4441d"
+os.environ.setdefault("DEEPSEEK_API_KEY", "sk-47aa291d867345d0991602b8b9b4441d")
 Settings.llm = DeepSeek(model="deepseek-chat")
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-zh-v1.5")
 
@@ -118,3 +118,32 @@ def query(request: QueryRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/upload")
+def upload_file(file: UploadFile = File(...)):
+    """上传新文档到知识库"""
+    global index, query_engine
+
+    # 读取文件内容
+    content = file.file.read().decode("utf-8")
+
+    # 保存到data_cleaned目录
+    save_path = os.path.join(DATA_DIR, file.filename)
+    with open(save_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    # 切片 + 构建节点
+    chunks = chunk_by_paragraph(content, max_size=512)
+    chunks = add_file_metadata(chunks, file.filename)
+    new_nodes = chunks_to_nodes(chunks)
+
+    # 插入现有索引
+    for node in new_nodes:
+        index.insert_nodes([node])
+
+    # 持久化 + 重建query_engine
+    index.storage_context.persist(persist_dir=STORAGE_DIR)
+    query_engine = build_query_engine(index)
+
+    return {"filename": file.filename, "chunks_added": len(new_nodes)}
