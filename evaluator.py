@@ -564,11 +564,11 @@ def run_evaluation(query_engine, llm, index, simple_retriever,  reranker, cases:
         print(f"[{i+1}/{total}] {case.question[:30]}...", end=" ", flush=True)
 
         start_time = time.time()
-    
+            
         intent = classify_intent(case.question)
-        result = route_query(case.question, intent, index, query_engine, simple_retriever, reranker)
+        result = route_query(case.question, intent, index, query_engine, simple_retriever,)
         latency = time.time() - start_time
-
+    
         # 从字典构造RAGContext，绕过parse_response
         sources = result["sources"]
         ctx = RAGContext(
