@@ -541,7 +541,7 @@ def search_generate_evaluation(case, ctx, llm, use_llm_judge):
 # ==========================================
 # 核心：运行评估 -- 主要做了3件事：提取检索信息、统计tokens、检索评估和生成评估
 # ==========================================
-def run_evaluation(query_engine, llm, index, simple_retriever,  reranker, cases: List[TestCase] = None, 
+def run_evaluation(query_engine, llm, index, simple_retriever, cases: List[TestCase] = None, 
                    use_llm_judge: bool = True) -> List[EvalResult]:
     """
     对 golden dataset 跑完整评估。
