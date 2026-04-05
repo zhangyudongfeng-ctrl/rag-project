@@ -63,11 +63,21 @@ class HybridOnlyRetriever(BaseRetriever):
         from retriever import hybrid_retrieve
         return hybrid_retrieve(query_bundle.query_str, self.vector_retriever, self.bm25_retriever)
 
-
 # ==========================================
 # 构建查询引擎（唯一入口）
 # ==========================================
-def build_query_engine(index, mode="multi_query"):
+'''
+ * @description: 向外界暴漏查询引擎/检索器/重排器
+ * @param {*} index
+ * @return {*} query_engine, retriever, reranker
+'''
+def build_components(
+    index,
+    mode="multi_query",
+    similarity_top_k=10,
+    reranker_top_n=3,
+    reranker_model="BAAI/bge-reranker-v2-m3",
+):
     """
     mode: 
         "vector_only" — 纯向量检索（V4）
@@ -77,20 +87,23 @@ def build_query_engine(index, mode="multi_query"):
     """
     if mode == "vector_only":
         from llama_index.core.retrievers import VectorIndexRetriever
-        retriever = VectorIndexRetriever(index=index, similarity_top_k=10)
+        retriever = VectorIndexRetriever(index=index, similarity_top_k=similarity_top_k)
     elif mode == "hybrid":
-        retriever = HybridOnlyRetriever(index, top_k=10)
+        retriever = HybridOnlyRetriever(index, top_k=similarity_top_k)
     elif mode == "hybrid_jieba":
-        retriever = HybridOnlyRetriever(index, top_k=10, use_jieba=True)
+        retriever = HybridOnlyRetriever(index, top_k=similarity_top_k, use_jieba=True)
     elif mode == "multi_query":
-        retriever = MultiQueryHybridRetriever(index, llm=Settings.llm, top_k=10)
+        retriever = MultiQueryHybridRetriever(index, llm=Settings.llm, top_k=similarity_top_k)
     elif mode == "multi_query_jieba":
-        retriever = MultiQueryHybridRetriever(index, llm=Settings.llm, top_k=10, use_jieba=True)
+        retriever = MultiQueryHybridRetriever(index, llm=Settings.llm, top_k=similarity_top_k, use_jieba=True)
+    else:
+        raise ValueError(f"Unsupported retrieval mode: {mode}")
 
-    reranker = FlagEmbeddingReranker(model="BAAI/bge-reranker-v2-m3", top_n=3)
-    return RetrieverQueryEngine.from_args(
+    reranker = FlagEmbeddingReranker(model=reranker_model, top_n=reranker_top_n)
+    query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
         node_postprocessors=[reranker],
         response_mode="compact",
         text_qa_template=qa_prompt
     )
+    return query_engine, retriever, reranker

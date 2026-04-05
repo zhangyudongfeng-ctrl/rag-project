@@ -1,58 +1,63 @@
-"""
-评估运行脚本：一键跑评估
-用法：python run_eval.py [run_name]
-示例：
-    python run_eval.py v3_baseline      # 给当前版本跑基准线
-    python run_eval.py v4_paragraph     # 改了切片策略后再跑
-    
-然后对比两次结果看效果变化。
-"""
-
-import sys
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-04-04 10:53:38
+ * @Description  : 
+'''
 import os
+import sys
+
 from llama_index.core import Settings, StorageContext, load_index_from_storage
-from llama_index.llms.deepseek import DeepSeek
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
-from llama_index.core.prompts import PromptTemplate
 
-from evaluator import run_evaluation, print_report, save_report
-from engine import build_query_engine
+from config import configure_settings, load_config
+from engine import HybridOnlyRetriever, build_components
+from evaluator import print_report, run_evaluation, save_report
 
-# ==========================================
-# 配置（和 main.py 保持一致）
-# ==========================================
-os.environ["DEEPSEEK_API_KEY"] = "sk-47aa291d867345d0991602b8b9b4441d"
-Settings.llm = DeepSeek(model="deepseek-chat")
-Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-zh-v1.5")
-
-STORAGE_DIR = "storage"
 
 def main():
-    # 运行名称：用于区分不同版本的评估结果
+    config = load_config()
+    configure_settings(config)
     run_name = sys.argv[1] if len(sys.argv) > 1 else "unnamed"
 
-    # 加载索引
-    if not os.path.exists(STORAGE_DIR):
-        print(f"错误：找不到 {STORAGE_DIR}/ 目录，请先运行 main.py 构建索引")
+    if not os.path.exists(config.storage_dir):
+        print(f"Missing storage directory: {config.storage_dir}")
         return
 
-    print("加载索引...")
-    storage_context = StorageContext.from_defaults(persist_dir=STORAGE_DIR)
-    from llama_index.core import load_index_from_storage
+    print("Loading index from storage...")
+    storage_context = StorageContext.from_defaults(persist_dir=config.storage_dir)
     index = load_index_from_storage(storage_context)
 
-    query_engine = build_query_engine(index, mode="multi_query")
+    simple_retriever = HybridOnlyRetriever(index, top_k=config.similarity_top_k)
+    query_engine, _, reranker = build_components(
+        index,
+        mode=config.default_mode,
+        similarity_top_k=config.similarity_top_k,
+        reranker_top_n=config.reranker_top_n,
+        reranker_model=config.reranker_model,
+    )
 
-    # 运行评估
-    print(f"\n开始评估 [{run_name}]...\n")
+    from evaluator import load_golden_dataset
+
+    cases = load_golden_dataset()
+    selected_cases = cases
+
+    # 测试单条用例
+    # 临时设置，只对这一次命令生效
+    # EVAL_CASE_INDEX=5 python run_eval.py
+    single_case_index = os.getenv("EVAL_CASE_INDEX")
+    if single_case_index is not None:
+        selected_cases = [cases[int(single_case_index)]]
+
+    print(f"\nRunning evaluation [{run_name}]...\n")
     results = run_evaluation(
         query_engine=query_engine,
         llm=Settings.llm,
-        use_llm_judge=True,  # 改成 False 可省 API 费用，只跑关键词指标
+        cases=selected_cases,
+        use_llm_judge=True, # 改成 False 可省 API 费用，只跑关键词指标
+        index=index,
+        simple_retriever=simple_retriever,
+        reranker=reranker,
     )
 
-    # 输出报告
     print_report(results, run_name=run_name)
     save_report(results, run_name=run_name)
 

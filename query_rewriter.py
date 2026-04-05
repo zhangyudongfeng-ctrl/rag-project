@@ -2,9 +2,8 @@
 query_rewriter.py：Query改写模块
 职责：把用户的一个问题改写成多个不同角度的问题，提升检索覆盖面
 """
-
 from llama_index.core.llms import LLM
-
+from llama_index.core.prompts import PromptTemplate
 
 REWRITE_PROMPT = """你是一个搜索查询改写助手。请将用户的问题改写为3个不同角度的搜索查询，用于在文档中检索相关内容。
 

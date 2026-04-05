@@ -1,7 +1,11 @@
 # 目的：写一个retriever，用于替换query_engine里的retriever参数
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever
+from llama_index.core.prompts import PromptTemplate
 from retriever import create_retrievers, multi_query_hybrid_retrieve
+import json
+from llama_index.core.llms import LLM
+from llama_index.core.prompts import PromptTemplate
 
 # 自定义类，继承自BaseRetriever
 class MultiQueryHybridRetriever(BaseRetriever):
@@ -16,3 +20,11 @@ class MultiQueryHybridRetriever(BaseRetriever):
         query = query_bundle.query_str
         res = multi_query_hybrid_retrieve(query, vector_res, bm25_res)
         return res
+    
+
+
+
+response = llm.complete(prompt)
+print(type(response))
+print(repr(response.text))
+

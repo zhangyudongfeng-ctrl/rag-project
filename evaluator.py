@@ -18,6 +18,7 @@ import time
 from dataclasses import dataclass, asdict, field
 from typing import List, Optional
 from datetime import datetime
+from router import classify_intent, route_query
 
 
 # ==========================================
@@ -259,8 +260,8 @@ def create_golden_dataset() -> List[TestCase]:
         ),
         TestCase(
             question="道德经最后一句话是什么？",
-            expected_answer="天之道，利而不害；圣人之道，为而不争。",
-            expected_keywords=["利而不害", "为而不争"],
+            expected_answer="圣人之道，为而不争。",
+            expected_keywords=["圣人之道", "为而不争"],
             expected_source="道德经",
             category="精确定位",
             difficulty="hard",
@@ -537,11 +538,10 @@ def search_generate_evaluation(case, ctx, llm, use_llm_judge):
         relevancy = eval_relevancy(case.question, ctx.actual_answer, llm)
     return hit, kw_recall, faithfulness, relevancy
 
-
 # ==========================================
 # 核心：运行评估 -- 主要做了3件事：提取检索信息、统计tokens、检索评估和生成评估
 # ==========================================
-def run_evaluation(query_engine, llm, cases: List[TestCase] = None, 
+def run_evaluation(query_engine, llm, index, simple_retriever,  reranker, cases: List[TestCase] = None, 
                    use_llm_judge: bool = True) -> List[EvalResult]:
     """
     对 golden dataset 跑完整评估。
@@ -551,6 +551,8 @@ def run_evaluation(query_engine, llm, cases: List[TestCase] = None,
         llm: 用于 LLM-as-Judge 的模型
         cases: 测试用例，默认从 golden_dataset.json 加载
         use_llm_judge: 是否启用 LLM 打分（关闭可省 API 费用，只跑关键词指标）
+        index: 用于 position 路由的索引对象
+        simple_retriever: 用于 position 路由的检索器对象
     """
     if cases is None:
         cases = load_golden_dataset()
@@ -562,11 +564,24 @@ def run_evaluation(query_engine, llm, cases: List[TestCase] = None,
         print(f"[{i+1}/{total}] {case.question[:30]}...", end=" ", flush=True)
 
         start_time = time.time()
-        response = query_engine.query(case.question)
+    
+        intent = classify_intent(case.question)
+        result = route_query(case.question, intent, index, query_engine, simple_retriever, reranker)
         latency = time.time() - start_time
 
-        # 提取检索信息
-        ctx = parse_response(response)
+        # 从字典构造RAGContext，绕过parse_response
+        sources = result["sources"]
+        ctx = RAGContext(
+            actual_answer=result["answer"],
+            source_nodes=[],
+            retrieved_chunks=[s["text"] for s in sources],
+            retrieved_sources=[s["source_file"] for s in sources],
+            top1_source=sources[0]["source_file"] if sources else "",
+            top1_score=sources[0]["score"] if sources else 0.0,
+            context="\n".join(s["text"] for s in sources),
+            prompt_tokens=0,
+            completion_tokens=0,
+        )
 
         # 检索和生成评估
         hit, kw_recall, faithfulness, relevancy = search_generate_evaluation(case, ctx, llm, use_llm_judge)

@@ -44,7 +44,7 @@ class Chunk:
 # 策略一：固定大小切片（基线）
 # 从头到尾滑动窗口，每次走chunk_size步，退回overlap步，尽量在句号处断开。
 # ==========================================
-def chunk_fixed(text: str, max_size: int = 512, overlap: int = 100) -> List[Chunk]:
+def chunk_fixed(text: str, chunk_size: int = 512, overlap: int = 100) -> List[Chunk]:
     """
     按固定字符数切片，带重叠。
     
@@ -61,7 +61,7 @@ def chunk_fixed(text: str, max_size: int = 512, overlap: int = 100) -> List[Chun
     start = 0
 
     while start < len(text):
-        end = start + max_size
+        end = start + chunk_size
 
         # 如果不是最后一片，尝试在句号/换行处断开，避免切断句子
         if end < len(text):

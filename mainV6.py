@@ -19,12 +19,14 @@ from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReran
 
 # 导入自定义模块
 from Chunker import chunk_by_paragraph, chunk_by_heading, add_file_metadata, chunks_to_nodes
-from engine import build_query_engine
+from engine import build_components, HybridOnlyRetriever
+from router import route_query
+from intent_classifier import classify_intent
 
 # ==========================================
 # 配置
 # ==========================================
-os.environ["DEEPSEEK_API_KEY"] = "sk-47aa291d867345d0991602b8b9b4441d"
+os.environ["DEEPSEEK_API_KEY"] = "sk-69ec2fcb0a404e5e9b4a58a2412cb8ea"
 Settings.llm = DeepSeek(model="deepseek-chat")
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-zh-v1.5")
 
@@ -83,8 +85,8 @@ def load_or_build_index() -> VectorStoreIndex:
 # ==========================================
 index = load_or_build_index()
 
-query_engine = build_query_engine(index)
-
+query_engine, retriever, reranker = build_components(index)
+simple_retriever = HybridOnlyRetriever(index, top_k=10) 
 
 # ==========================================
 # 交互循环
@@ -97,22 +99,15 @@ try:
         if not question.strip():
             continue
 
-        response = query_engine.query(question)
-
-        print(f"\n{'='*50}")
-        print(f"回答：{response}")
-        print(f"\n--- 检索到的原文片段 ---")
-        for i, node in enumerate(response.source_nodes):
-            score = node.score
-            meta = node.metadata
-            source = meta.get("source_file", "未知")
-            heading = meta.get("heading", "")
-            position = meta.get("position", "")
-
-            print(f"\n片段{i+1}（相关度：{score:.3f}）")
-            print(f"  来源: {source}" + (f" | 章节: {heading}" if heading else "") + (f" | 位置: {position}" if position else ""))
-            print(f"  内容: {node.text[:200]}")
-        print(f"{'='*50}")
+        intent = classify_intent(question)
+        result = route_query(question, intent, index, query_engine, simple_retriever)
+        print(f"回答：{result['answer']}")
+        for i, s in enumerate(result["sources"]):
+            print(f"\n片段{i+1}（相关度：{s['score']}）")
+            print(f"  来源: {s['source_file']}" + 
+                (f" | 章节: {s['heading']}" if s['heading'] else "") + 
+                (f" | 位置: {s['position']}" if s['position'] else ""))
+            print(f"  内容: {s['text'][:200]}")
 
 except KeyboardInterrupt:
     print("\n已退出")

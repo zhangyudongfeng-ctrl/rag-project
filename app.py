@@ -139,15 +139,8 @@ with st.sidebar:
 # ==========================================
 # 主界面：问答
 # ==========================================
-question = st.text_input(
-    "💬 输入问题",
-    placeholder="例如：佛陀对苦的根源怎么看？",
-    label_visibility="collapsed"
-)
-
-col1, col2, col3 = st.columns([4, 1, 4])
-with col2:
-    ask = st.button("🔍 提问", use_container_width=True)
+question = st.text_input("请输入问题")
+ask = st.button("🔍 提问")
 
 if ask and question.strip():
     with st.spinner("检索中..."):

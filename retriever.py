@@ -1,6 +1,13 @@
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-03-22 14:02:26
+ * @Description  : 
+'''
 """
 retriever.py：混合检索模块
 职责：向量检索 + BM25检索 + RRF融合 + Multi-Query支持
+B向量检索靠语义相似度，但有时候用户问的就是一个精确关键词，语义相近的chunk反而不是用户要的。比如用户问"八正道"，向量检索可能把讲"修行方法"的chunk排很高（语义相近），但漏掉了明确包含"八正道"三个字的那个chunk。
+BM25纯看词频——文档里"八正道"出现越多、越集中，分数越高。不理解语义，但精确匹配不会漏。
 """
 
 import jieba
@@ -43,6 +50,7 @@ def rrf_fusion(results_list, k=60):
     scores = {}    # node_id -> 融合分数
     node_map = {}  # node_id -> node对象
 
+    # 遍历并给每一路打分 
     for results in results_list:
         for rank, node_with_score in enumerate(results):
             node_id = node_with_score.node.node_id
