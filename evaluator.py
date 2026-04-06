@@ -18,7 +18,8 @@ import time
 from dataclasses import dataclass, asdict, field
 from typing import List, Optional
 from datetime import datetime
-from router import classify_intent, route_query
+from router import  route_query
+from intent_classifier import classify_intent
 
 
 # ==========================================

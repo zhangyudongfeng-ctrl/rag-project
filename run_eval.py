@@ -38,14 +38,17 @@ def main():
     from evaluator import load_golden_dataset
 
     cases = load_golden_dataset()
-    selected_cases = cases
 
-    # 测试单条用例
-    # 临时设置，只对这一次命令生效
-    # EVAL_CASE_INDEX=5 python run_eval.py
-    single_case_index = os.getenv("EVAL_CASE_INDEX")
-    if single_case_index is not None:
-        selected_cases = [cases[int(single_case_index)]]
+    # 评测控制
+    EVAL_MODE = "full"      # 手动控制: "full" 或 "single"
+    EVAL_CASE_INDEX = 5     # 仅在 single 模式下生效
+
+    if EVAL_MODE == "single":
+        if EVAL_CASE_INDEX < 0 or EVAL_CASE_INDEX >= len(cases):
+            raise IndexError(f"EVAL_CASE_INDEX 越界: {EVAL_CASE_INDEX}, 当前 case 总数: {len(cases)}")
+        selected_cases = [cases[EVAL_CASE_INDEX]]
+    else:
+        selected_cases = cases
 
     print(f"\nRunning evaluation [{run_name}]...\n")
     results = run_evaluation(
@@ -55,7 +58,6 @@ def main():
         use_llm_judge=True, # 改成 False 可省 API 费用，只跑关键词指标
         index=index,
         simple_retriever=simple_retriever,
-        reranker=reranker,
     )
 
     print_report(results, run_name=run_name)

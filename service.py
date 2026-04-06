@@ -1,19 +1,26 @@
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-04-04 10:53:12
+ * @Description  : 
+'''
 import os
 from dataclasses import dataclass
 
 from config import RagConfig
 from engine import HybridOnlyRetriever, build_components
-from index_factory import load_or_build_index
 from router import route_query
+from typing import Any
+from index_factory import load_or_build_index, rebuild_index_from_LlamaIndex
 from intent_classifier import classify_intent
+from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 
 
 @dataclass
 class RagComponents:
-    index: object
-    query_engine: object
-    simple_retriever: object
-    reranker: object
+    index: Any
+    query_engine: Any
+    simple_retriever: HybridOnlyRetriever
+    reranker: FlagEmbeddingReranker
 
 
 class RagService:
@@ -27,7 +34,11 @@ class RagService:
      * @return {RagComponents} 
     '''    
     def _build_components(self) -> RagComponents:
-        index = load_or_build_index(self.config)
+        # 使用框架内部的文本切分方案
+        index = rebuild_index_from_LlamaIndex(self.config)
+
+        # 自定义文本切分方案
+        # index = load_or_build_index(self.config)
         query_engine, _, reranker = build_components(
             index,
             mode=self.config.default_mode,

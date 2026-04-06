@@ -4,6 +4,14 @@
  * @Description  :
 -->
 
+文档 → chunker.py(切片) → TextNode → 建索引(embedding) → storage/持久化
+↓
+engine.py(build_components)
+↓
+query_engine / retriever / reranker
+↓
+RagService 持有
+
 问题进来 → api.py → router.py → handler → 返回
 
 api.py 启动时构建：
@@ -17,6 +25,10 @@ route_query(question, intent, index, query_engine, simple_retriever, reranker)
 └→ multi_doc → handle_multi_doc(question, simple_retriever, reranker)
 
 统一返回: {"answer": str, "sources": [...]}
+
+handle_normal → query_engine.query() → MultiQuery改写 → Hybrid Search → Reranker → LLM
+handle_multi_doc → LLM拆子问题 → simple_retriever.retrieve() → 合并context → LLM
+handle_position → extract_position → metadata过滤index → LLM
 
 # 项目架构
 

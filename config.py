@@ -1,3 +1,8 @@
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-04-04 10:53:12
+ * @Description  : 
+'''
 import os
 from dataclasses import dataclass
 
@@ -34,6 +39,7 @@ def configure_settings(config: RagConfig) -> None:
     os.environ["DEEPSEEK_API_KEY"] = config.deepseek_api_key
     Settings.llm = DeepSeek(model=config.llm_model)
     Settings.embed_model = HuggingFaceEmbedding(model_name=config.embedding_model)
+    # 这是默认兜底 splitter，不是主索引链路当前使用的切分器
     Settings.text_splitter = SentenceSplitter(
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
