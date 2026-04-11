@@ -3,11 +3,16 @@ engine.py：共享查询引擎配置
 main和run_eval都从这里获取query_engine，改一处全生效
 """
 
-from llama_index.core import Settings
+from typing import List, Optional
+
+from attr import dataclass
+from llama_index.core import QueryBundle, Settings
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever
+from llama_index.core.schema import NodeWithScore
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 
 from retriever import create_retrievers, multi_query_hybrid_retrieve
 from query_rewriter import multi_query_rewrite
@@ -31,6 +36,23 @@ qa_prompt = PromptTemplate(
     
     "问题：{query_str}\n回答："
 )
+
+
+'''
+ * @description: 重写BaseNodePostprocessor中的_postprocess_nodes方法,用于降低chunk中的content_type类型为Auxiliary时的权重->也就是分数 * 0.5
+'''
+class Auxiliary_downweight_postprocessor(BaseNodePostprocessor):
+    weight: float = 0.5
+    
+    # 输入: 只需要nodes->List[NodeWithScore], 不需要query_bundle
+    # 输出: 新的处理过的List[NodeWithScore]
+    # 过程: 把List[NodeWithScore]中的score分数降权
+    def _postprocess_nodes(self, nodes: List[NodeWithScore], query_bundle: Optional[QueryBundle] = None) -> List[NodeWithScore]:
+        for n in nodes:
+            if n.node.metadata.get("content_type") == "auxiliary":
+                n.score = (n.score or 0) * self.weight
+        nodes.sort(key=lambda x: (x.score or 0), reverse=True)
+        return nodes
 
 
 # ==========================================
@@ -100,9 +122,13 @@ def build_components(
         raise ValueError(f"Unsupported retrieval mode: {mode}")
 
     reranker = FlagEmbeddingReranker(model=reranker_model, top_n=reranker_top_n)
+    # reranker 先用 cross-encoder 给出真实相关性分数,
+    # 然后 post_processor 对 auxiliary 类型的 chunk 在真实分数上降权,
+    # 最终影响 top_n 截断的取舍
+    post_processor = Auxiliary_downweight_postprocessor(weight=0.5)
     query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
-        node_postprocessors=[reranker],
+        node_postprocessors=[reranker, post_processor],
         response_mode="compact",
         text_qa_template=qa_prompt
     )
