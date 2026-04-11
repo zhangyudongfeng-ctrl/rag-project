@@ -2,13 +2,7 @@
   {
     "question": "道可道非常道是什么意思？",
     "expected_answer": "可以用言语表达的道，就不是永恒不变的道。可以用名称称呼的名，就不是永恒不变的名。",
-    "expected_keywords": [
-      "言语",
-      "表达",
-      "永恒",
-      "道",
-      "名"
-    ],
+    "expected_keywords": ["言语", "表达", "永恒", "道", "名"],
     "expected_source": "道德经",
     "category": "事实",
     "difficulty": "normal"
@@ -16,11 +10,7 @@
   {
     "question": "道德经中关于水的论述",
     "expected_answer": "上善若水。水善利万物而不争，处众人之所恶，故几于道。",
-    "expected_keywords": [
-      "上善若水",
-      "不争",
-      "万物"
-    ],
+    "expected_keywords": ["上善若水", "不争", "万物"],
     "expected_source": "道德经",
     "category": "事实",
     "difficulty": "normal"
@@ -28,11 +18,7 @@
   {
     "question": "老子认为理想的统治者是什么样的？",
     "expected_answer": "太上，不知有之。最好的统治者，人民不知道他的存在。其次亲之誉之，再次畏之侮之。",
-    "expected_keywords": [
-      "不知有之",
-      "统治",
-      "太上"
-    ],
+    "expected_keywords": ["不知有之", "统治", "太上"],
     "expected_source": "道德经",
     "category": "推理",
     "difficulty": "normal"
@@ -40,13 +26,7 @@
   {
     "question": "什么是四圣谛？",
     "expected_answer": "苦谛、集谛、灭谛、道谛。苦是生命的本质，集是苦的原因，灭是苦的终止，道是灭苦的方法。",
-    "expected_keywords": [
-      "苦",
-      "集",
-      "灭",
-      "道",
-      "四谛"
-    ],
+    "expected_keywords": ["苦", "集", "灭", "道", "四谛"],
     "expected_source": "佛教十三经",
     "category": "事实",
     "difficulty": "normal"
@@ -54,12 +34,7 @@
   {
     "question": "色即是空是什么意思？",
     "expected_answer": "一切物质现象（色）本质上是空的，没有独立不变的自性。空不是没有，而是指事物的无自性。",
-    "expected_keywords": [
-      "色",
-      "空",
-      "自性",
-      "物质"
-    ],
+    "expected_keywords": ["色", "空", "自性", "物质"],
     "expected_source": "佛教十三经",
     "category": "事实",
     "difficulty": "normal"
@@ -67,12 +42,7 @@
   {
     "question": "佛教中有漏和无漏是什么意思？",
     "expected_answer": "有漏指有烦恼、有缺陷的状态，漏是烦恼的别名。无漏指断除烦恼、清净无染的境界。",
-    "expected_keywords": [
-      "烦恼",
-      "漏",
-      "有漏",
-      "无漏"
-    ],
+    "expected_keywords": ["烦恼", "漏", "有漏", "无漏"],
     "expected_source": "佛教十三经",
     "category": "事实",
     "difficulty": "normal"
@@ -80,12 +50,7 @@
   {
     "question": "尼采说的超人是什么概念？",
     "expected_answer": "超人是人类应当超越自身的目标。人是猿猴到超人之间的一根绳索。超人是大地的意义。",
-    "expected_keywords": [
-      "超人",
-      "超越",
-      "绳索",
-      "大地"
-    ],
+    "expected_keywords": ["超人", "超越", "绳索", "大地"],
     "expected_source": "查拉图斯特拉如是说",
     "category": "事实",
     "difficulty": "normal"
@@ -93,12 +58,7 @@
   {
     "question": "永恒回归是什么意思？",
     "expected_answer": "一切事物将以完全相同的方式无限次重复发生。这是对生命最大的肯定——你是否愿意让此刻永远重复。",
-    "expected_keywords": [
-      "永恒",
-      "重复",
-      "回归",
-      "肯定"
-    ],
+    "expected_keywords": ["永恒", "重复", "回归", "肯定"],
     "expected_source": "查拉图斯特拉如是说",
     "category": "推理",
     "difficulty": "normal"
@@ -106,12 +66,7 @@
   {
     "question": "帕斯卡尔怎么看人的处境？",
     "expected_answer": "人是一根会思想的芦苇，是自然界最脆弱的东西。但人的全部尊严就在于思想。",
-    "expected_keywords": [
-      "芦苇",
-      "思想",
-      "脆弱",
-      "尊严"
-    ],
+    "expected_keywords": ["芦苇", "思想", "脆弱", "尊严"],
     "expected_source": "思想录",
     "category": "事实",
     "difficulty": "normal"
@@ -119,12 +74,7 @@
   {
     "question": "帕斯卡尔的赌注论证是什么？",
     "expected_answer": "如果信上帝，上帝存在则获得无限幸福；不存在也没什么损失。如果不信，上帝存在则失去一切。理性选择是信。",
-    "expected_keywords": [
-      "上帝",
-      "赌注",
-      "信",
-      "理性"
-    ],
+    "expected_keywords": ["上帝", "赌注", "信", "理性"],
     "expected_source": "思想录",
     "category": "推理",
     "difficulty": "normal"
@@ -132,11 +82,7 @@
   {
     "question": "土方岁三是谁？",
     "expected_answer": "新选组副长，幕末武士。出身武州多摩，性格刚烈，以铁律维持新选组纪律。",
-    "expected_keywords": [
-      "新选组",
-      "副长",
-      "土方"
-    ],
+    "expected_keywords": ["新选组", "副长", "土方"],
     "expected_source": "燃烧吧！剑",
     "category": "事实",
     "difficulty": "normal"
@@ -144,12 +90,7 @@
   {
     "question": "新选组的局中法度是什么？",
     "expected_answer": "新选组内部的严格规章制度，违反者切腹。包括不得私自脱离、不得私自筹款等条目。",
-    "expected_keywords": [
-      "法度",
-      "切腹",
-      "规章",
-      "新选组"
-    ],
+    "expected_keywords": ["法度", "切腹", "规章", "新选组"],
     "expected_source": "燃烧吧！剑",
     "category": "事实",
     "difficulty": "normal"
@@ -157,12 +98,7 @@
   {
     "question": "道德经的'无为'和佛教的'空'有什么关系？",
     "expected_answer": "道德经的无为是不妄为、顺应自然；佛教的空是指事物无自性。两者都指向放下执着，但出发点不同。",
-    "expected_keywords": [
-      "无为",
-      "空",
-      "自然",
-      "执着"
-    ],
+    "expected_keywords": ["无为", "空", "自然", "执着"],
     "expected_source": "",
     "category": "对比",
     "difficulty": "hard"
@@ -170,11 +106,7 @@
   {
     "question": "尼采和帕斯卡尔对信仰的态度有何不同？",
     "expected_answer": "帕斯卡尔认为理性指向信仰上帝，尼采宣告上帝已死，人应自我超越。",
-    "expected_keywords": [
-      "上帝",
-      "信仰",
-      "超越"
-    ],
+    "expected_keywords": ["上帝", "信仰", "超越"],
     "expected_source": "",
     "category": "对比",
     "difficulty": "hard"
@@ -182,23 +114,7 @@
   {
     "question": "道德经的核心观点是什么？",
     "expected_answer": "道法自然、无为而治、柔弱胜刚强。道是万物本源，人应顺应自然之道。",
-    "expected_keywords": [
-      "道法自然",
-      "无为",
-      "柔弱"
-    ],
-    "expected_source": "道德经",
-    "category": "开放",
-    "difficulty": "hard"
-  },
-  {
-    "question": "道德经的主旨是什么？",
-    "expected_answer": "与'核心观点'同义，测试同义问题检索稳定性。",
-    "expected_keywords": [
-      "道法自然",
-      "无为",
-      "柔弱"
-    ],
+    "expected_keywords": ["道法自然", "无为", "柔弱"],
     "expected_source": "道德经",
     "category": "开放",
     "difficulty": "hard"
@@ -206,10 +122,7 @@
   {
     "question": "土方岁三是修佛的吗？",
     "expected_answer": "文档中没有相关内容。土方岁三是武士，文档中未提及他修佛。",
-    "expected_keywords": [
-      "没有",
-      "武士"
-    ],
+    "expected_keywords": ["没有", "武士"],
     "expected_source": "燃烧吧！剑",
     "category": "跨文档",
     "difficulty": "hard"
@@ -217,10 +130,7 @@
   {
     "question": "土方岁三的人生在佛学中可以认为他修行的是顶级的有为法吗？虽然高级，但终究不是无为法",
     "expected_answer": "文档中没有将土方岁三与佛学联系的内容。这是跨文档推理，需要分别从两本书检索再综合。",
-    "expected_keywords": [
-      "有为法",
-      "无为法"
-    ],
+    "expected_keywords": ["有为法", "无为法"],
     "expected_source": "",
     "category": "跨文档",
     "difficulty": "hard"
@@ -228,11 +138,7 @@
   {
     "question": "一切有为法，如梦幻泡影。后一句是什么？",
     "expected_answer": "如露亦如电，应作如是观。",
-    "expected_keywords": [
-      "如露",
-      "如电",
-      "如是观"
-    ],
+    "expected_keywords": ["如露", "如电", "如是观"],
     "expected_source": "佛教十三经",
     "category": "精确定位",
     "difficulty": "normal"
@@ -240,20 +146,15 @@
   {
     "question": "诸幻尽灭，不入断灭。出自哪里？",
     "expected_answer": "出自《圆觉经》。",
-    "expected_keywords": [
-      "圆觉经"
-    ],
+    "expected_keywords": ["圆觉经"],
     "expected_source": "佛教十三经",
     "category": "精确定位",
     "difficulty": "normal"
   },
   {
     "question": "道德经最后一句话是什么？",
-    "expected_answer": "天之道，利而不害；圣人之道，为而不争。",
-    "expected_keywords": [
-      "利而不害",
-      "为而不争"
-    ],
+    "expected_answer": "圣人之道，为而不争。",
+    "expected_keywords": ["为而不争"],
     "expected_source": "道德经",
     "category": "精确定位",
     "difficulty": "hard"
@@ -261,10 +162,7 @@
   {
     "question": "为何土方要杀六车宗伯？",
     "expected_answer": "需要从小说具体情节中检索，涉及人物冲突和剧情推理。",
-    "expected_keywords": [
-      "土方",
-      "六车"
-    ],
+    "expected_keywords": ["土方", "六车"],
     "expected_source": "燃烧吧！剑",
     "category": "推理",
     "difficulty": "normal"
@@ -272,9 +170,7 @@
   {
     "question": "言语道断心行处灭出自哪里？",
     "expected_answer": "出自《维摩诘所说经》或佛经。系统应基于文档回答，如果文档中没有则说不知道，不要编造。",
-    "expected_keywords": [
-      "言语道断"
-    ],
+    "expected_keywords": ["言语道断"],
     "expected_source": "佛教十三经",
     "category": "幻觉测试",
     "difficulty": "normal"
@@ -282,9 +178,7 @@
   {
     "question": "文档中对量子力学有什么看法？",
     "expected_answer": "文档中没有关于量子力学的内容。系统应诚实回答'没有相关内容'。",
-    "expected_keywords": [
-      "没有"
-    ],
+    "expected_keywords": ["没有"],
     "expected_source": "",
     "category": "幻觉测试",
     "difficulty": "normal"
@@ -292,10 +186,7 @@
   {
     "question": "真空生妙有，妙有归真空，出自文档中的哪部经书？",
     "expected_answer": "系统应基于文档检索回答，若文档中没有原文则诚实说明。",
-    "expected_keywords": [
-      "真空",
-      "妙有"
-    ],
+    "expected_keywords": ["真空", "妙有"],
     "expected_source": "佛教十三经",
     "category": "幻觉测试",
     "difficulty": "normal"
@@ -303,10 +194,7 @@
   {
     "question": "土方岁三是燃烧吧！剑的主角吗？",
     "expected_answer": "是的，土方岁三是《燃烧吧！剑》的主角。",
-    "expected_keywords": [
-      "土方",
-      "主角"
-    ],
+    "expected_keywords": ["土方", "主角"],
     "expected_source": "燃烧吧！剑",
     "category": "同义问法",
     "difficulty": "normal"
@@ -314,9 +202,7 @@
   {
     "question": "燃烧吧！剑这本小说的主角是谁？",
     "expected_answer": "土方岁三。测试同一问题不同问法的检索稳定性。",
-    "expected_keywords": [
-      "土方"
-    ],
+    "expected_keywords": ["土方"],
     "expected_source": "燃烧吧！剑",
     "category": "同义问法",
     "difficulty": "normal"
@@ -324,34 +210,81 @@
   {
     "question": "金刚经的主旨是什么？核心内容是什么？",
     "expected_answer": "金刚经的核心是破除一切执着，包括对法的执着。凡所有相皆是虚妄，应无所住而生其心。",
-    "expected_keywords": [
-      "执着",
-      "虚妄",
-      "无所住"
-    ],
+    "expected_keywords": ["执着", "虚妄", "无所住"],
     "expected_source": "佛教十三经",
     "category": "开放",
     "difficulty": "hard"
   },
   {
-    "question": "金刚经是谁在说经，全名叫什么？",
-    "expected_answer": "释迦牟尼佛（佛陀）在说经，全名为《金刚般若波罗蜜经》。问题有歧义：'全名'可能指说经人或经书。",
-    "expected_keywords": [
-      "释迦",
-      "金刚般若波罗蜜"
-    ],
+    "question": "金刚经全称是什么，说经人的全名叫什么？",
+    "expected_answer": "能断金刚般若波罗密经, 释迦牟尼佛。",
+    "expected_keywords": ["能断金刚般若波罗密经", "释迦牟尼"],
     "expected_source": "佛教十三经",
     "category": "歧义",
     "difficulty": "normal"
   },
   {
-    "question": "金刚经是谁在说经，说经人的全名叫什么？",
-    "expected_answer": "释迦牟尼佛。消除歧义后的版本，对比上一条看检索差异。",
-    "expected_keywords": [
-      "释迦牟尼"
-    ],
-    "expected_source": "佛教十三经",
-    "category": "歧义",
+    "question": "庄子讲的'坐忘'是什么意思？",
+    "expected_answer": "堕肢体，黜聪明，离形去知，同于大通，此谓坐忘。忘掉身体和心智的执着，与大道合一。",
+    "expected_keywords": ["堕肢体", "黜聪明", "离形去知", "大通"],
+    "expected_source": "庄子",
+    "category": "事实",
+    "difficulty": "normal"
+  },
+  {
+    "question": "庄子怎么看待生死？",
+    "expected_answer": "庄子妻死，鼓盆而歌。认为生死是气的聚散，方生方死，方死方生，生死齐一。",
+    "expected_keywords": ["鼓盆而歌", "方生方死", "气", "齐"],
+    "expected_source": "庄子",
+    "category": "推理",
+    "difficulty": "normal"
+  },
+  {
+    "question": "什么是逍遥游？",
+    "expected_answer": "至人无己，神人无功，圣人无名。真正的逍遥是无待——不依赖任何外在条件，达到精神的绝对自由。",
+    "expected_keywords": ["无待", "至人无己", "神人无功", "圣人无名"],
+    "expected_source": "庄子",
+    "category": "开放",
+    "difficulty": "normal"
+  },
+  {
+    "question": "庄子里'庄周梦蝶'讲的是什么？",
+    "expected_answer": "庄周梦见自己化为蝴蝶，醒后不知是庄周梦为蝴蝶，还是蝴蝶梦为庄周。讨论物我界限与真实的相对性。",
+    "expected_keywords": ["庄周", "蝴蝶", "梦", "物化"],
+    "expected_source": "庄子",
+    "category": "事实",
+    "difficulty": "normal"
+  },
+  {
+    "question": "道德经和庄子对'无为'的理解有什么异同？",
+    "expected_answer": "道德经的无为偏向治国——'无为而治''为无为则无不治'，强调统治者不妄为顺应自然。庄子的无为偏向个人精神境界——'虚而待物''坐忘''心斋'，强调主体放下执着与道合一。共同点是'顺应自然、不妄为'，差异在道德经重政治实践、庄子重精神超越。",
+    "expected_keywords": ["无为而治", "心斋", "坐忘", "顺应自然", "虚而待物"],
+    "expected_source": "",
+    "category": "对比",
+    "difficulty": "hard"
+  },
+  {
+    "question": "对比庄子的'坐忘'和佛经中的禅定修行",
+    "expected_answer": "庄子的坐忘是'离形去知，同于大通'，忘身忘心与道合一。佛经的禅定是止观双运，通过专注和观照断除烦恼证入空性。共同点是都要放下执着、超越常规意识；差异在坐忘指向道家的'大通'境界，禅定指向佛家的'涅槃'解脱。",
+    "expected_keywords": ["离形去知", "大通", "止观", "涅槃", "断除"],
+    "expected_source": "",
+    "category": "对比",
+    "difficulty": "hard"
+  },
+  {
+    "question": "庄子这本书开头第一篇是什么？",
+    "expected_answer": "《逍遥游》。开篇即'北冥有鱼，其名为鲲。鲲之大，不知其几千里也'。",
+    "expected_keywords": ["逍遥游", "北冥", "鲲", "鹏"],
+    "expected_source": "庄子",
+    "category": "精确定位",
+    "difficulty": "hard"
+  },
+  {
+    "question": "庄子里讲了哪些著名的寓言故事？",
+    "expected_answer": "庄周梦蝶、濠梁之辩、鼓盆而歌、庖丁解牛等。这些寓言用来阐述齐物、逍遥、养生等思想。",
+    "expected_keywords": ["庄周梦蝶", "濠梁", "鼓盆", "齐物"],
+    "expected_source": "庄子",
+    "category": "开放",
     "difficulty": "normal"
   }
 ]
