@@ -1,6 +1,6 @@
 """
 切片模块：多策略切片 + 元数据保留 + 策略对比
-用法：放到 D:\rag-project\ 下
+用法：放到 D:\rag-project 下
     - 单独运行 python chunker.py 可预览切片效果
     - 在 main.py 中 import 使用
 
@@ -11,17 +11,35 @@
 
 核心思路：
     清洗后的txt → 按策略切成chunks → 每个chunk附带元数据 → 喂给LlamaIndex建索引
+
+# 已知边界(content_type 状态机):
+# 1. AUXILIARY_MARKERS 不可能穷尽,标题用罕见词的辅助章节会被错标
+#    例:庄子的"庄子的艺术特色"导读
+# 2. 状态机只看 chunk 第一行,第一行非 heading 但第二行是 heading 的情况会被忽略
+#    例:庄子题解 chunk 第一行是日期"二〇一〇年一月",第二行才是 ### 【题解】
+# 应对:这两类罕见 case 通过 golden_dataset 的 category 标注绕过,不打补丁
+
+
 """
 
 import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import List, Optional
 
 # LlamaIndex 相关（在 main.py 中集成时使用）
 from llama_index.core.schema import TextNode
+import logging
+logger = logging.getLogger(__name__)
 
+AUXILIARY_MARKERS = ["前言", "序言", "序", "导论", "题解", "译注", "注释", "后记", "附录", "目录", "凡例"]
+
+# 状态机扫描 chunk 前 N 行寻找 heading,N 设置为 5 是因为:
+# - 1 行不够(日期/空行可能占据第一行)
+# - 10 行太宽(可能误识别正文中的子标题)
+# - 5 是真实文本里"前导内容 + heading"的常见上限
+# 如果将来遇到反例,优先改这个常量,不要重写状态机逻辑
+HEADING_SCAN_LINES = 5
 
 # ==========================================
 # 数据结构：一个chunk长什么样
@@ -39,6 +57,43 @@ class Chunk:
         preview = self.text[:50].replace('\n', '\\n')
         return f"Chunk({len(self.text)}字符, '{preview}...')"
 
+
+'''
+ * @description: 识别chunk中的标题类内容,提取并添加进元数据. 只要不在AUXILIARY_MARKERS里的就算是正文->目前只能这样取舍了,过滤掉一些chunk,但不可能完全过滤
+ * @param {Chunk} chunks
+ * @return {Chunk} chunks
+'''
+def propagate_content_type(chunks: List[Chunk]) -> List[Chunk]:
+    current = "main"  # 默认正文
+    
+    for chunk in chunks:
+        # 旧方案->只看第一行 -> 需要修改,最多看前五行
+        # first_line = head.split(sep="\n")[0].strip()
+        # if first_line.startswith("#") or first_line.startswith("【"):
+        #     if any(m in first_line for m in AUXILIARY_MARKERS):
+        #         current = "auxiliary"
+        #     else:
+        #         current = "main"
+
+        # 新方案
+        lines = chunk.text.split("\n")[:HEADING_SCAN_LINES]
+        heading_line = None
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("#") or line.startswith("【"):
+                heading_line = line
+                break
+        
+        if heading_line:
+            if any(m in heading_line for m in AUXILIARY_MARKERS):
+                current = "auxiliary"
+            else:
+                current = "main"
+        chunk.metadata["content_type"] = current
+    
+    return chunks
 
 # ==========================================
 # 策略一：固定大小切片（基线）
@@ -385,10 +440,10 @@ def compare_strategies(text: str, filename: str = "test") -> dict:
 
 def print_comparison(results: dict):
     """打印对比表格"""
-    print(f"\n{'策略':<20} {'切片数':>6} {'平均长度':>8} {'最短':>6} {'最长':>6}")
-    print("-" * 52)
+    logger.info(f"\n{'策略':<20} {'切片数':>6} {'平均长度':>8} {'最短':>6} {'最长':>6}")
+    logger.info("-" * 52)
     for name, stats in results.items():
-        print(f"{name:<20} {stats['chunk_count']:>6} {stats['avg_length']:>8} {stats['min_length']:>6} {stats['max_length']:>6}")
+        logger.info(f"{name:<20} {stats['chunk_count']:>6} {stats['avg_length']:>8} {stats['min_length']:>6} {stats['max_length']:>6}")
 
 
 # ==========================================
@@ -396,12 +451,11 @@ def print_comparison(results: dict):
 # ==========================================
 def preview_chunks(chunks: List[Chunk], n: int = 5):
     """预览前 n 个切片"""
-    print(f"\n共 {len(chunks)} 个切片，预览前 {min(n, len(chunks))} 个：\n")
+    logger.info(f"\n共 {len(chunks)} 个切片，预览前 {min(n, len(chunks))} 个：\n")
     for i, chunk in enumerate(chunks[:n]):
-        print(f"--- 切片 {i+1} ({len(chunk)} 字符) ---")
-        print(f"元数据: {chunk.metadata}")
-        print(chunk.text[:200])
-        print()
+        logger.info(f"--- 切片 {i+1} ({len(chunk)} 字符) ---")
+        logger.info(f"元数据: {chunk.metadata}")
+        logger.info(chunk.text[:200])
 
 
 # ==========================================
@@ -411,7 +465,7 @@ if __name__ == "__main__":
     DATA_DIR = "data_cleaned"
 
     if not os.path.exists(DATA_DIR):
-        print(f"错误：找不到 {DATA_DIR} 目录，请先运行 clean_data.py")
+        logger.info(f"错误：找不到 {DATA_DIR} 目录，请先运行 clean_data.py")
         exit(1)
 
     # 遍历所有清洗后的文件
@@ -423,14 +477,14 @@ if __name__ == "__main__":
         with open(filepath, 'r', encoding='utf-8') as f:
             text = f.read()
 
-        print(f"\n{'='*60}")
-        print(f"文件: {filename} ({len(text):,} 字符)")
-        print(f"{'='*60}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"文件: {filename} ({len(text):,} 字符)")
+        logger.info(f"{'='*60}")
 
         # 对比所有策略
         results = compare_strategies(text, filename)
-        print_comparison(results)
+        print(results)
 
         # 预览推荐策略的切片
-        print(f"\n>>> paragraph_512 策略预览:")
+        logger.info(f"\n>>> paragraph_512 策略预览:")
         preview_chunks(results["paragraph_512"]["chunks"], n=3)

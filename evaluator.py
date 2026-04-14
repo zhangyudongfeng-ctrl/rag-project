@@ -1,6 +1,6 @@
 """
 RAG 评估模块
-用法：放到 D:\rag-project\ 下，运行 python evaluator.py
+用法：放到 D:\rag-project下，运行 python evaluator.py
 
 功能：
     1. 管理 golden dataset（测试用例集）
@@ -16,7 +16,7 @@ import json
 import csv
 import time
 from dataclasses import dataclass, asdict, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime
 from router import  route_query
 from intent_classifier import classify_intent
@@ -60,7 +60,7 @@ class EvalResult:
     retrieved_sources: List[str]    # 所有检索到的来源
     
     # 生成指标
-    keyword_recall: float           # 关键词命中率（0-1）
+    keyword_recall: Optional[float] # 关键词命中率（0-1）
     faithfulness: float             # 忠实度评分（LLM打分，1-5）
     relevancy: float                # 相关性评分（LLM打分，1-5）
     
@@ -82,6 +82,8 @@ GOLDEN_FILE = "golden_dataset.json"
 def create_golden_dataset() -> List[TestCase]:
     """
     初始 golden dataset。
+    初始兜底数据集。仅在 golden_dataset.json 不存在时使用。
+    真源是 golden_dataset.json，请直接编辑 json 文件。
     
     构建原则：
         1. 覆盖不同问题类型（事实/推理/对比/开放）
@@ -384,8 +386,9 @@ def eval_retrieval_hit(expected_source: str, retrieved_sources: List[str]) -> bo
             return True
     return False
 
-
-def eval_keyword_recall(expected_keywords: List[str], actual_answer: str) -> float:
+# 跳过开放问题的召回率计算
+# 返回值可能是 float，也可能是 None, 后续需要处理为None的情况
+def eval_keyword_recall(case: TestCase, actual_answer: str) -> Optional[float]:
     """
     关键词召回率：期望关键词在实际答案中出现了多少。
     
@@ -394,13 +397,15 @@ def eval_keyword_recall(expected_keywords: List[str], actual_answer: str) -> flo
         - 作为生成质量的粗筛指标
         - 配合 LLM-as-Judge 使用，互相校验
     """
-
+    # 开放题跳过关键词评估
+    if case.category == "开放":
+        return None  # 或 "N/A"
     # TODO如果没有关键词，默认满分 --- 有隐患
-    if not expected_keywords:
+    if not case.expected_keywords:
         return 1.0
     
-    hits = sum(1 for kw in expected_keywords if kw in actual_answer)
-    return hits / len(expected_keywords)
+    hits = sum(1 for kw in case.expected_keywords if kw in actual_answer)
+    return hits / len(case.expected_keywords)
 
 
 # ==========================================
@@ -526,10 +531,10 @@ def parse_response(response) -> RAGContext:
 # 检索评估和生成评估
 # 输入：case, RAGContext，llm, 可选参数(是否使用LLM评估)use_llm_judge
 # 输出：检索是否命中，关键词召回率，忠实度评分，相关性评分
-def search_generate_evaluation(case, ctx, llm, use_llm_judge):
+def search_generate_evaluation(case, ctx, llm, use_llm_judge) -> Tuple[bool, Optional[float], float, float]:
     # 检索评估
     hit = eval_retrieval_hit(case.expected_source, ctx.retrieved_sources)
-    kw_recall = eval_keyword_recall(case.expected_keywords, ctx.actual_answer)
+    kw_recall = eval_keyword_recall(case, ctx.actual_answer)
 
     # 生成评估（可选）
     faithfulness = 0.0
@@ -607,11 +612,23 @@ def run_evaluation(query_engine, llm, index, simple_retriever, cases: List[TestC
         )
         results.append(result)
 
-        status = "✅" if hit and kw_recall > 0.5 else "❌"
-        print(f"{status} 命中:{hit} 关键词:{kw_recall:.0%} 忠实:{faithfulness:.0f} 相关:{relevancy:.0f} ({latency:.1f}s)")
+        if kw_recall is not None:
+            status = "✅" if hit and kw_recall > 0.5 else "❌"
+            print(f"{status} 命中:{hit} 关键词:{kw_recall:.0%} 忠实:{faithfulness:.0f} 相关:{relevancy:.0f} ({latency:.1f}s)")
+        else:
+        # 开放题只看忠实度和相关性
+            status = "✅" if hit and faithfulness >= 4 else "❌"
+            print(f"{status} 命中:{hit} 关键词:N/A 忠实:{faithfulness:.0f} 相关:{relevancy:.0f} ({latency:.1f}s)")
 
     return results
 
+
+def is_failure(r):
+    if not r.retrieval_hit:
+        return True
+    if r.keyword_recall is None:  # 开放题
+        return r.faithfulness < 4
+    return r.keyword_recall < 0.3
 
 # ==========================================
 # 报告生成
@@ -627,7 +644,9 @@ def print_report(results: List[EvalResult], run_name: str = ""):
     # 总体指标
     if total > 0:
         hit_rate = sum(1 for r in results if r.retrieval_hit) / total
-        avg_kw = sum(r.keyword_recall for r in results) / total
+        # 过滤召回率为None的情况
+        recalls = [r.keyword_recall for r in results if r.keyword_recall is not None]
+        avg_kw = sum(recalls) / len(recalls) if recalls else 0.0
         avg_faith = sum(r.faithfulness for r in results) / total
         avg_rel = sum(r.relevancy for r in results) / total
         avg_latency = sum(r.latency_seconds for r in results) / total
@@ -664,16 +683,19 @@ def print_report(results: List[EvalResult], run_name: str = ""):
         for cat in sorted(categories):
             cat_results = [r for r in results if r.category == cat]
             cat_hit = sum(1 for r in cat_results if r.retrieval_hit) / len(cat_results)
-            cat_kw = sum(r.keyword_recall for r in cat_results) / len(cat_results)
+            # 过滤召回率为None的情况
+            cat_recalls = [r.keyword_recall for r in cat_results if r.keyword_recall is not None]
+            cat_kw = sum(cat_recalls) / len(cat_recalls) if cat_recalls else 0.0
             print(f"  {cat:<6} ({len(cat_results)}条): 命中={cat_hit:.0%}  关键词={cat_kw:.0%}")
 
     # 失败案例
-    failures = [r for r in results if not r.retrieval_hit or r.keyword_recall < 0.3]
+    failures = [r for r in results if is_failure(r)]
     if failures:
         print(f"\n--- 失败案例 ({len(failures)}条) ---")
         for r in failures:
             print(f"  ❌ {r.question[:40]}")
-            print(f"     命中:{r.retrieval_hit} 关键词:{r.keyword_recall:.0%} 来源:{r.top1_source}")
+            kw_str = "N/A" if r.keyword_recall is None else f"{r.keyword_recall:.0%}"
+            print(f"     命中:{r.retrieval_hit} 关键词:{kw_str} 来源:{r.top1_source}")
             print(f"     context:{r.context_length}字符 | tokens: prompt={r.prompt_tokens} completion={r.completion_tokens}")
             # 显示第一个chunk的前100字符，快速判断检索对不对
             if r.retrieved_chunks:
@@ -698,12 +720,13 @@ def save_report(results: List[EvalResult], run_name: str = "mainV3"):
         for r in results:
             writer.writerow([
                 r.question, r.category, r.retrieval_hit, r.top1_source,
-                f"{r.top1_score:.3f}", f"{r.keyword_recall:.2f}",
-                f"{r.faithfulness:.0f}", f"{r.relevancy:.0f}",
-                f"{r.latency_seconds:.1f}",
-                r.prompt_tokens, r.completion_tokens, r.context_length,
-                r.expected_answer, r.actual_answer,
-                "|||".join(c[:200] for c in r.retrieved_chunks)  # chunk用|||分隔，每个截200字符
+            f"{r.top1_score:.3f}" if r.top1_score is not None else "N/A",
+            f"{r.keyword_recall:.2f}" if r.keyword_recall is not None else "N/A",
+            f"{r.faithfulness:.0f}", f"{r.relevancy:.0f}",
+            f"{r.latency_seconds:.1f}",
+            r.prompt_tokens, r.completion_tokens, r.context_length,
+            r.expected_answer, r.actual_answer,
+            "|||".join(c[:200] for c in r.retrieved_chunks)  # chunk用|||分隔，每个截200字符
             ])
 
     print(f"评估结果已保存: {filename}")
@@ -718,6 +741,7 @@ def compare_runs(results_a: List[EvalResult], results_b: List[EvalResult],
     """对比两次评估，看哪些指标变好了哪些变差了"""
     def avg(lst, attr):
         vals = [getattr(r, attr) for r in lst]
+        vals = [v for v in vals if v is not None]  # 过滤 None
         return sum(vals) / len(vals) if vals else 0
 
     metrics = ["keyword_recall", "faithfulness", "relevancy"]

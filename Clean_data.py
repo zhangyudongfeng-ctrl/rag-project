@@ -8,7 +8,10 @@ import os
 from ebooklib import epub
 import ebooklib
 from html2text import HTML2Text
+from parse_pdf import parse_pdf, is_scanned_pdf
 
+import logging
+logger = logging.getLogger(__name__)
 
 INPUT_DIR = "data"
 OUTPUT_DIR = "data_cleaned"
@@ -53,7 +56,7 @@ def extract_text_from_epub(filepath):
                 content_parts.append(text)
         return "\n\n".join(content_parts)
     except Exception as e:
-        print(f"❌ 解析 EPUB 出错: {filepath} | 错误: {e}")
+        logger.info(f"❌ 解析 EPUB 出错: {filepath} | 错误: {e}")
         return ""
 
 # ==========================================
@@ -140,7 +143,7 @@ def run_pipeline(text):
 def read_and_clean_files(input_path, output_path):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-        print(f"创建目录: {output_path}")
+        logger.info(f"创建目录: {output_path}")
 
     # 获取文件夹下的所有文件名
     file_list = os.listdir(input_path)
@@ -162,10 +165,16 @@ def read_and_clean_files(input_path, output_path):
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 raw_content = f.read()
         elif suffix == '.epub':
-            print(f"📦 正在解析 EPUB: {filename}...")
+            logger.info(f"📦 正在解析 EPUB: {filename}...")
             raw_content = extract_text_from_epub(file_path)
+        elif suffix == '.pdf':
+            if is_scanned_pdf(file_path):
+                logger.warning(f"跳过扫描型PDF: {filename}")
+                continue
+            logger.info(f"📦 正在解析 文本型PDF: {filename}...")
+            raw_content = parse_pdf(file_path)
         else:
-            print(f"⚠️ 跳过不支持的文件: {filename}")
+            logger.info(f"⚠️ 跳过不支持的文件: {filename}")
             continue
 
         # 3. 执行清洗流水线
@@ -179,19 +188,16 @@ def read_and_clean_files(input_path, output_path):
         with open(file_out, 'w', encoding='utf-8') as f_out:
             f_out.write(clean_content)
         
-        print(f"✅ 处理完成: {new_filename:25} | 原始长度: {len(raw_content):7} | 清洗后: {len(clean_content):7}")
-        # 测试代码
-        if "。" not in clean_content:
-            print("⚠️ 警告：检测到文档中没有中文句号！切片逻辑可能会崩！")
+        logger.info(f"✅ 处理完成: {new_filename:25} | 原始长度: {len(raw_content):7} | 清洗后: {len(clean_content):7}")
         
 
 # ==========================================
 # 程序的正式入口
 # ==========================================
 if __name__ == "__main__":
-    print("🚀 开始数据清洗流水线...")
+    logger.info("🚀 开始数据清洗流水线...")
     read_and_clean_files(INPUT_DIR, OUTPUT_DIR)
-    print("\n✨ 全部清洗任务已完成！请检查 data_cleaned 文件夹。")
+    logger.info("\n✨ 全部清洗任务已完成！请检查 data_cleaned 文件夹。")
 
 
 

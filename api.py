@@ -1,3 +1,8 @@
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-04-04 10:53:38
+ * @Description  : 
+'''
 import time
 
 from fastapi import FastAPI, File, UploadFile
@@ -5,6 +10,9 @@ from pydantic import BaseModel
 
 from config import configure_settings, load_config
 from service import RagService
+
+from logging_config import setup_logging
+setup_logging()
 
 
 class QueryRequest(BaseModel):

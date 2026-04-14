@@ -1,4 +1,3 @@
-
 目录
 
 中文版前言
@@ -267,8 +266,6 @@ Herausgegeben von Giorgio Colli und Mazzino Montinari
 * * *
 
  乔尔乔·科利（Giorgio Colli）：科利版《尼采著作全集》主编。——译注
-
-# 《查拉图斯特拉如是说》第一部
 
 ## 查拉图斯特拉之序言
 

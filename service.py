@@ -34,11 +34,12 @@ class RagService:
      * @return {RagComponents} 
     '''    
     def _build_components(self) -> RagComponents:
+        # TODO 在这里切换切片方案
         # 使用框架内部的文本切分方案
-        index = rebuild_index_from_LlamaIndex(self.config)
+        # index = rebuild_index_from_LlamaIndex(self.config)
 
         # 自定义文本切分方案
-        # index = load_or_build_index(self.config)
+        index = load_or_build_index(self.config)
         query_engine, _, reranker = build_components(
             index,
             mode=self.config.default_mode,

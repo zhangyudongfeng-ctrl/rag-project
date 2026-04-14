@@ -98,7 +98,8 @@ def build_components(
     mode="multi_query",
     similarity_top_k=10,
     reranker_top_n=3,
-    reranker_model="BAAI/bge-reranker-v2-m3",
+    #reranker_model="BAAI/bge-reranker-v2-m3",
+    reranker_model="BAAI/bge-reranker-base",
 ):
     """
     mode: 
@@ -129,6 +130,7 @@ def build_components(
     query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
         node_postprocessors=[reranker, post_processor],
+        #node_postprocessors=[post_processor],
         response_mode="compact",
         text_qa_template=qa_prompt
     )

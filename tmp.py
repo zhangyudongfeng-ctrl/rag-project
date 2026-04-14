@@ -1,30 +1,21 @@
-# 目的：写一个retriever，用于替换query_engine里的retriever参数
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.retrievers import BaseRetriever
-from llama_index.core.prompts import PromptTemplate
-from retriever import create_retrievers, multi_query_hybrid_retrieve
-import json
-from llama_index.core.llms import LLM
-from llama_index.core.prompts import PromptTemplate
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-03-16 16:14:45
+ * @Description  : 
+'''
 
-# 自定义类，继承自BaseRetriever
-class MultiQueryHybridRetriever(BaseRetriever):
-    # 需要调用create()
-    def __init__(self, index, top_k=10, llm):
-        self.vector_retriever, self.bm25_retriever = create_retrievers(index, top_k)
-        self.llm = llm
-        super().__init__()
-    
-    # 需要返回RRF融合查询后的结果
-    def _retrieve(self, query_bundle):
-        query = query_bundle.query_str
-        res = multi_query_hybrid_retrieve(query, vector_res, bm25_res)
-        return res
-    
+from service import RagService
+from config import load_config, configure_settings  # ← 补上
 
+config = load_config()
+configure_settings(config)  # ← 先配置全局 Settings
+service = RagService(config)
+index = service.components.index
 
-
-response = llm.complete(prompt)
-print(type(response))
-print(repr(response.text))
-
+for node in index.docstore.docs.values():
+    if "庄子" not in node.metadata.get("source_file", ""):
+        continue
+    ct = node.metadata.get("content_type", "未标")
+    idx = node.metadata.get("chunk_index", -1)
+    preview = node.text[:40].replace("\n", " ")
+    print(f"[{idx:3}] [{ct}] {preview}")

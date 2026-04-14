@@ -8,7 +8,7 @@ import os
 
 from llama_index.core import StorageContext, VectorStoreIndex, load_index_from_storage, SimpleDirectoryReader
 
-from Chunker import add_file_metadata, chunk_by_paragraph, chunks_to_nodes
+from Chunker import add_file_metadata, chunk_by_paragraph, chunks_to_nodes, propagate_content_type
 from config import RagConfig
 
 
@@ -27,6 +27,7 @@ def build_index_from_data(config: RagConfig) -> VectorStoreIndex:
             text = file.read()
 
         chunks = chunk_by_paragraph(text, max_size=config.chunk_size)
+        chunks = propagate_content_type(chunks)
         chunks = add_file_metadata(chunks, filename)
         all_nodes.extend(chunks_to_nodes(chunks))
 

@@ -3,17 +3,19 @@ router.py：意图分类 + 路由分发 + 三个handler
 整个项目的数据格式就三种：chunk（字典）→ TextNode（加了id）→ NodeWithScore（加了分数）
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 from llama_index.core import Settings
 from engine import HybridOnlyRetriever
+from llama_index.core.schema import NodeWithScore, TextNode
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 # 一个工具函数，统一把NodeWithScore或TextNode格式的检索结果转换成前端需要的字典格式
 # nodes: List[NodeWithScore] 或 List[TextNode]
 # 注意区别, 如果是Nodewithscore类型,但是里面score是None, 处理成0.0, 如果是TextNode类型, 那么score直接设为None
-def format_nodes_to_sources(nodes):
+def format_nodes_to_sources(nodes: list[NodeWithScore | TextNode] | None) -> list:
     if not nodes:
         return []
     # 把类型判断放到函数内部, 调用方不需要关心传入的nodes是带分数的NodeWithScore还是普通的TextNode, 函数内部会自动适配
@@ -36,10 +38,17 @@ def format_nodes_to_sources(nodes):
 
     return sources
 
-# 处理normal问题
-# 以字典格式返回，因为api端需要统一接收一种格式，保证3种路由返回json格式一致
-def handle_normal(question, query_engine):
+'''
+ * @description: # 处理normal问题, 以字典格式返回，因为api端需要统一接收一种格式，保证3种路由返回json格式一致
+ * @param {*} question
+ * @param {*} query_engine
+ * @return {*}
+'''
+def handle_normal(question: str, query_engine: Any) -> dict:
+    start = time.perf_counter()
     response = query_engine.query(question)
+    elapsed = time.perf_counter() - start 
+    print(f"handle_normal.query耗时: {elapsed:.2f}s")
     return {
             "answer": response.response,
             "sources": format_nodes_to_sources(response.source_nodes)
@@ -97,9 +106,14 @@ def extract_position_and_source(question: str) -> Tuple[Optional[str], Optional[
 
     return position, source
 
-# 处理position问题
-# 过滤时应该同时匹配position和source_file
-def handle_position(question: str, index, query_engine) -> dict:
+'''
+ * @description: # 处理position问题,过滤时应该同时匹配position和source_file
+ * @param {str} question
+ * @param {Any} index
+ * @param {Any} query_engine
+ * @return {*}
+'''
+def handle_position(question: str, index : Any, query_engine : Any) -> dict:
         # 1. 提取目标位置
         position, source = extract_position_and_source(question)  # 数据此时是(position, source)
         target = normalize_position(position, question=question)
@@ -113,6 +127,7 @@ def handle_position(question: str, index, query_engine) -> dict:
         all_nodes = index.docstore.docs.values()
         # 需要拿到source_file,这个信息在metadata里,但metadata又是存在TextNode里的,所以只能先拿到TextNode再比对metadata
         matched = [n for n in all_nodes if n.metadata.get("position") == target and (source in n.metadata.get("source_file", "") if source else True)]
+        matched = [n for n in matched if n.metadata.get("content_type") == "main"]      # 过滤前言之类的无效内容
 
         # index.docstore.docs.values() 的顺序取决于插入顺序，可能不是严格按文档位置排的。加一行排序更稳
         matched.sort(key=lambda n: n.metadata.get("chunk_index", 0))
@@ -188,14 +203,23 @@ def handle_multi_doc(question: str, retriever: HybridOnlyRetriever)-> dict:
 # 输入：question, intent, index
 # 输出：调用方要拿到回答展示给用户
 # 过程：根据intent调用不同的处理函数
-def route_query(question, intent, index, query_engine, retriever):
+def route_query(question : str, intent : str, index : Any, query_engine : Any, retriever : Any) -> dict:
     print(f"  → intent: {intent}, question: {question[:30]}")
-    if intent == 'position':
-        return handle_position(question, index, query_engine)
-    elif intent == 'multi_doc':
-        return handle_multi_doc(question, retriever)
-    else:
-        return handle_normal(question, query_engine)
+    # if intent == 'position':
+    #     return handle_position(question, index, query_engine)
+    # elif intent == 'multi_doc':
+    #     return handle_multi_doc(question, retriever)
+    # else:
+    #     return handle_normal(question, query_engine)
+    
+    # 根据map里的intent使用不同的路由,避免if elif的堆叠
+    handler_map = {
+        "position": lambda q: handle_position(q, index, query_engine),
+        "multi_doc": lambda q: handle_multi_doc(q, retriever),
+        "normal": lambda q: handle_normal(q, query_engine),
+    }
+    handler = handler_map.get(intent, handler_map["normal"])
+    return handler(question)
 
 
 '''

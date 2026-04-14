@@ -5,6 +5,8 @@
 '''
 from config import configure_settings, load_config
 from service import RagService
+from logging_config import setup_logging
+setup_logging()
 
 
 def main():
@@ -26,7 +28,8 @@ def main():
             print(result["answer"])
             print("\nSources:")
             for index, source in enumerate(result["sources"], start=1):
-                print(f"\n[{index}] {source['source_file']} score={source['score']:.3f}")
+                score_str = "N/A" if source['score'] is None else f"{source['score']:.3f}"
+                print(f"\n[{index}] {source['source_file']} score={score_str}")
                 print(source["text"])
             print("=" * 50)
     except KeyboardInterrupt:
