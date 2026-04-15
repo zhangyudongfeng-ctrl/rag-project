@@ -45,10 +45,7 @@ def format_nodes_to_sources(nodes: list[NodeWithScore | TextNode] | None) -> lis
  * @return {*}
 '''
 def handle_normal(question: str, query_engine: Any) -> dict:
-    start = time.perf_counter()
     response = query_engine.query(question)
-    elapsed = time.perf_counter() - start 
-    print(f"handle_normal.query耗时: {elapsed:.2f}s")
     return {
             "answer": response.response,
             "sources": format_nodes_to_sources(response.source_nodes)
@@ -205,13 +202,6 @@ def handle_multi_doc(question: str, retriever: HybridOnlyRetriever)-> dict:
 # 过程：根据intent调用不同的处理函数
 def route_query(question : str, intent : str, index : Any, query_engine : Any, retriever : Any) -> dict:
     print(f"  → intent: {intent}, question: {question[:30]}")
-    # if intent == 'position':
-    #     return handle_position(question, index, query_engine)
-    # elif intent == 'multi_doc':
-    #     return handle_multi_doc(question, retriever)
-    # else:
-    #     return handle_normal(question, query_engine)
-    
     # 根据map里的intent使用不同的路由,避免if elif的堆叠
     handler_map = {
         "position": lambda q: handle_position(q, index, query_engine),

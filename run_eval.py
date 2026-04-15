@@ -31,10 +31,7 @@ def main():
     simple_retriever = HybridOnlyRetriever(index, top_k=config.similarity_top_k)
     query_engine, _, _ = build_components(
         index,
-        mode=config.default_mode,
-        similarity_top_k=config.similarity_top_k,
-        reranker_top_n=config.reranker_top_n,
-        reranker_model=config.reranker_model,
+        config=config,
     )
 
     from evaluator import load_golden_dataset
@@ -42,17 +39,16 @@ def main():
     cases = load_golden_dataset()
 
     # 评测控制
-    EVAL_MODE = "full"   # "full" / "single" / "indices"
+    EVAL_MODE = "indices"   # "full" / "single" / "indices"
     EVAL_CASE_INDEX = 30     # single 模式用 
     EVAL_CASE_INDICES = [
-        14,  # 道德经核心观点
-        15,  # 土方修佛(已知架构天花板)
-        27,  # 金刚经全称(合并后,验证是否修复)
-        29,  # 庄子生死
-        30,  # 什么是逍遥游
-        32,  # 道德经和庄子无为异同
-        34,  # 庄子开头第一篇(content_type 的重点验证)
-    ]
+        1, # 道德经中关于水的论述
+        2, # 老子认为理想的统治者是什么样的？
+        6, # 尼采说的超人是什么概念？
+        8, # 帕斯卡尔怎么看人的处境？
+        11, # 新选组的局中法度是什么？
+        30, # 什么是逍遥游?
+    ]   # 快速小批量测试normal性能的问题, 下标=索引-1
     # 内部转成 0-indexed
     selected_cases = [cases[i - 1] for i in EVAL_CASE_INDICES]
 

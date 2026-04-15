@@ -7,12 +7,11 @@ import os
 from dataclasses import dataclass
 
 from config import RagConfig
-from engine import HybridOnlyRetriever, build_components
+from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker, SelectiveReranker, build_components
 from router import route_query
 from typing import Any
 from index_factory import load_or_build_index, rebuild_index_from_LlamaIndex
 from intent_classifier import classify_intent
-from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 
 
 @dataclass
@@ -20,7 +19,7 @@ class RagComponents:
     index: Any
     query_engine: Any
     simple_retriever: HybridOnlyRetriever
-    reranker: FlagEmbeddingReranker
+    reranker: NoOpReranker | CappedReranker | SelectiveReranker
 
 
 class RagService:
@@ -42,10 +41,7 @@ class RagService:
         index = load_or_build_index(self.config)
         query_engine, _, reranker = build_components(
             index,
-            mode=self.config.default_mode,
-            similarity_top_k=self.config.similarity_top_k,
-            reranker_top_n=self.config.reranker_top_n,
-            reranker_model=self.config.reranker_model,
+            config=self.config,
         )
         simple_retriever = HybridOnlyRetriever(
             index=index,

@@ -51,12 +51,15 @@ def rrf_fusion(results_list, k=60):
     node_map = {}  # node_id -> node对象
 
     # 遍历并给每一路打分 
+    total_results = sum(len(results) for results in results_list)
+    print(f"去重前总节点数: {total_results}")  
     for results in results_list:
         for rank, node_with_score in enumerate(results):
             node_id = node_with_score.node.node_id
             scores[node_id] = scores.get(node_id, 0) + 1 / (k + rank + 1)
             node_map[node_id] = node_with_score.node
 
+    print(f"去重后的候选节点数: {len(scores)}") 
     sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
     return [NodeWithScore(node=node_map[nid], score=scores[nid]) for nid in sorted_ids]
 
