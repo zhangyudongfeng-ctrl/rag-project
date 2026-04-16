@@ -8,7 +8,9 @@ from llama_index.core import Settings
 from engine import HybridOnlyRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
 import logging
-import time
+
+from rag_compotents import RagComponents
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +46,8 @@ def format_nodes_to_sources(nodes: list[NodeWithScore | TextNode] | None) -> lis
  * @param {*} query_engine
  * @return {*}
 '''
-def handle_normal(question: str, query_engine: Any) -> dict:
-    response = query_engine.query(question)
+def handle_normal(question: str, components: "RagComponents") -> dict:
+    response = components.query_engine.query(question)
     return {
             "answer": response.response,
             "sources": format_nodes_to_sources(response.source_nodes)
@@ -110,7 +112,7 @@ def extract_position_and_source(question: str) -> Tuple[Optional[str], Optional[
  * @param {Any} query_engine
  * @return {*}
 '''
-def handle_position(question: str, index : Any, query_engine : Any) -> dict:
+def handle_position(question: str, components: "RagComponents") -> dict:
         # 1. 提取目标位置
         position, source = extract_position_and_source(question)  # 数据此时是(position, source)
         target = normalize_position(position, question=question)
@@ -118,10 +120,10 @@ def handle_position(question: str, index : Any, query_engine : Any) -> dict:
 
         # 加上防御,如果LLM没有正确提取到位置，或者提取到了但不是开头或结尾，就当做普通问题处理
         if target not in ("开头", "结尾"):
-            return handle_normal(question, query_engine)
+            return handle_normal(question, components.query_engine)
         
         # 2. 过滤节点 (注意：这里直接操作 index.docstore.docs 比较重，但现阶段先跑通)
-        all_nodes = index.docstore.docs.values()
+        all_nodes = components.index.docstore.docs.values()
         # 需要拿到source_file,这个信息在metadata里,但metadata又是存在TextNode里的,所以只能先拿到TextNode再比对metadata
         matched = [n for n in all_nodes if n.metadata.get("position") == target and (source in n.metadata.get("source_file", "") if source else True)]
         matched = [n for n in matched if n.metadata.get("content_type") == "main"]      # 过滤前言之类的无效内容
@@ -162,7 +164,7 @@ def handle_position(question: str, index : Any, query_engine : Any) -> dict:
  * @param {FlagEmbeddingReranker} reranker
  * @return {dict} 自定义的json格式
 '''
-def handle_multi_doc(question: str, retriever: HybridOnlyRetriever)-> dict:
+def handle_multi_doc(question: str, components: "RagComponents")-> dict:
     # 把question拆分为多个子问题分别检索，最后合并
     prompt = ("把该问题拆分为2-3个独立的子问题，每行一个，不要编号，不要多余内容。\n"
           f"问题：{question}\n"
@@ -178,7 +180,7 @@ def handle_multi_doc(question: str, retriever: HybridOnlyRetriever)-> dict:
     all_nodes = []
     for i, sub_question in enumerate(sub_questions):
         # ← 只检索，返回NodeWithScore列表
-        nodes = retriever.retrieve(sub_question)
+        nodes = components.simple_retriever.retrieve(sub_question)
         # TODO 目前不用reranker方案,耗时太大 -> 子问题已经很精确了，hybrid检索的RRF融合排序就够用，直接取前3个
         # reranked = reranker.postprocess_nodes(nodes, query_str=sub_question)
         all_nodes.extend(nodes[:3]) # extend展平，不是append
@@ -197,19 +199,19 @@ def handle_multi_doc(question: str, retriever: HybridOnlyRetriever)-> dict:
     }
 
 
-# 输入：question, intent, index
+HANDLER_MAP = {
+    "position": handle_position,
+    "multi_doc": handle_multi_doc,
+    "normal": handle_normal,
+}
+
+# 输入：question, intent, handler_map
 # 输出：调用方要拿到回答展示给用户
 # 过程：根据intent调用不同的处理函数
-def route_query(question : str, intent : str, index : Any, query_engine : Any, retriever : Any) -> dict:
+def route_query(question: str, intent: str, components: "RagComponents") -> dict:
     print(f"  → intent: {intent}, question: {question[:30]}")
-    # 根据map里的intent使用不同的路由,避免if elif的堆叠
-    handler_map = {
-        "position": lambda q: handle_position(q, index, query_engine),
-        "multi_doc": lambda q: handle_multi_doc(q, retriever),
-        "normal": lambda q: handle_normal(q, query_engine),
-    }
-    handler = handler_map.get(intent, handler_map["normal"])
-    return handler(question)
+    handler = HANDLER_MAP.get(intent, handle_normal)
+    return handler(question, components)
 
 
 '''

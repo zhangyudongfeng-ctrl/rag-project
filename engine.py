@@ -3,11 +3,9 @@ engine.py：共享查询引擎配置
 main和run_eval都从这里获取query_engine，改一处全生效
 """
 
-from collections import Counter
 import logging
 from typing import List, Optional
 
-from attr import dataclass
 from llama_index.core import QueryBundle, Settings
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -16,7 +14,7 @@ from llama_index.core.schema import NodeWithScore
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.retrievers import VectorIndexRetriever
-from pydantic import PrivateAttr, model_validator
+from pydantic import PrivateAttr
 
 from config import RagConfig
 from retriever import create_retrievers, multi_query_hybrid_retrieve
@@ -247,7 +245,6 @@ def build_components(
     query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
         node_postprocessors=[reranker, post_processor],
-        #node_postprocessors=[post_processor],
         response_mode='compact',
         text_qa_template=qa_prompt
     )

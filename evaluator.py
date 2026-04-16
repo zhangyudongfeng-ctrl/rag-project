@@ -20,6 +20,7 @@ from typing import List, Optional, Tuple
 from datetime import datetime
 from router import  route_query
 from intent_classifier import classify_intent
+from rag_compotents import RagComponents
 
 
 # ==========================================
@@ -547,18 +548,16 @@ def search_generate_evaluation(case, ctx, llm, use_llm_judge) -> Tuple[bool, Opt
 # ==========================================
 # 核心：运行评估 -- 主要做了3件事：提取检索信息、统计tokens、检索评估和生成评估
 # ==========================================
-def run_evaluation(query_engine, llm, index, simple_retriever, cases: List[TestCase] = None, 
+def run_evaluation(components: "RagComponents", llm, cases: List[TestCase] = None, 
                    use_llm_judge: bool = True) -> List[EvalResult]:
     """
     对 golden dataset 跑完整评估。
     
     参数：
-        query_engine: LlamaIndex 的查询引擎
         llm: 用于 LLM-as-Judge 的模型
         cases: 测试用例，默认从 golden_dataset.json 加载
         use_llm_judge: 是否启用 LLM 打分（关闭可省 API 费用，只跑关键词指标）
-        index: 用于 position 路由的索引对象
-        simple_retriever: 用于 position 路由的检索器对象
+        components: RagComponents
     """
     if cases is None:
         cases = load_golden_dataset()
@@ -572,7 +571,7 @@ def run_evaluation(query_engine, llm, index, simple_retriever, cases: List[TestC
         start_time = time.time()
             
         intent = classify_intent(case.question)
-        result = route_query(case.question, intent, index, query_engine, simple_retriever,)
+        result = route_query(case.question, intent, components)
         latency = time.time() - start_time
     
         # 从字典构造RAGContext，绕过parse_response

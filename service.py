@@ -7,19 +7,11 @@ import os
 from dataclasses import dataclass
 
 from config import RagConfig
-from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker, SelectiveReranker, build_components
+from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker, build_components
+from rag_compotents import RagComponents
 from router import route_query
-from typing import Any
 from index_factory import load_or_build_index, rebuild_index_from_LlamaIndex
 from intent_classifier import classify_intent
-
-
-@dataclass
-class RagComponents:
-    index: Any
-    query_engine: Any
-    simple_retriever: HybridOnlyRetriever
-    reranker: NoOpReranker | CappedReranker
 
 
 class RagService:
@@ -61,13 +53,7 @@ class RagService:
     # 有了路由机制后,所有问题都会经过这个函数，先进行意图分类，再路由到不同的处理逻辑
     def query(self, question: str) -> dict:
         intent = classify_intent(question)
-        return route_query(
-            question=question,
-            intent=intent,
-            index=self.components.index,
-            query_engine=self.components.query_engine,
-            retriever=self.components.simple_retriever,
-        )
+        return route_query(question, intent, self.components)
 
     
     # 目前主要就是给 api.py 的 /upload 接口用的，而这个接口又是给前端网页上传文件走的

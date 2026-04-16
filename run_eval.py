@@ -12,12 +12,14 @@ from llama_index.core import Settings, StorageContext, load_index_from_storage
 from config import configure_settings, load_config
 from engine import HybridOnlyRetriever, build_components
 from evaluator import print_report, run_evaluation, save_report
+from service import RagService
 
 logger = logging.getLogger(__name__)
 
 def main():
     config = load_config()
     configure_settings(config)
+    rag_service = RagService(config)
     run_name = sys.argv[1] if len(sys.argv) > 1 else "unnamed"
 
     if not os.path.exists(config.storage_dir):
@@ -26,20 +28,15 @@ def main():
 
     logger.info("Loading index from storage...")
     storage_context = StorageContext.from_defaults(persist_dir=config.storage_dir)
-    index = load_index_from_storage(storage_context)
 
-    simple_retriever = HybridOnlyRetriever(index, top_k=config.similarity_top_k)
-    query_engine, _, _ = build_components(
-        index,
-        config=config,
-    )
+    RagComponents = rag_service.components
 
     from evaluator import load_golden_dataset
 
     cases = load_golden_dataset()
 
     # 评测控制
-    EVAL_MODE = "indices"   # "full" / "single" / "indices"
+    EVAL_MODE = "single"   # "full" / "single" / "indices"
     EVAL_CASE_INDEX = 30     # single 模式用 
     EVAL_CASE_INDICES = [
         1, # 道德经中关于水的论述
@@ -66,12 +63,10 @@ def main():
 
     logger.info(f"\nRunning evaluation [{run_name}]...\n")
     results = run_evaluation(
-        query_engine=query_engine,
+        components=RagComponents,
         llm=Settings.llm,
         cases=selected_cases,
         use_llm_judge=True, # 改成 False 可省 API 费用，只跑关键词指标
-        index=index,
-        simple_retriever=simple_retriever,
     )
 
     print_report(results, run_name=run_name)
