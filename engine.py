@@ -3,6 +3,7 @@ engine.py：共享查询引擎配置
 main和run_eval都从这里获取query_engine，改一处全生效
 """
 
+from collections import Counter
 import logging
 from typing import List, Optional
 
@@ -79,7 +80,7 @@ class NoOpReranker(BaseNodePostprocessor):
 '''
 class CappedReranker(BaseNodePostprocessor):
     reranker_top_n: int = 3
-    candidate_pool_size: int = 12
+    candidate_pool_size: int = 14
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     _reranker: FlagEmbeddingReranker = PrivateAttr(default=None)
 
@@ -109,7 +110,7 @@ class CappedReranker(BaseNodePostprocessor):
         )
         return reranked
 
-''' SelectiveReranker调用逻辑:
+''' SelectiveReranker调用逻辑: ---> 废弃
 接收 retriever + RRF 之后的候选节点列表
             ↓
 先截断成前 candidate_pool_size 个候选
@@ -122,88 +123,6 @@ class CappedReranker(BaseNodePostprocessor):
             ↓
 返回 rerank 后的前 top_n
 '''
-
-'''
- * @description: 先看首轮检索结果“是不是已经足够明确”，如果已经很明确，就不跑 reranker；如果还不够明确，再调用真正的 cross-encoder reranker
- * @return {*}
-'''
-class SelectiveReranker(BaseNodePostprocessor):
-    reranker_top_n: int = 3
-    candidate_pool_size: int = 20
-    min_nodes_to_rerank: int = 20
-    skip_min_score: float = 4.0
-    skip_min_margin: float = 0.2
-    reranker_model: str = "BAAI/bge-reranker-v2-m3"
-    _reranker: FlagEmbeddingReranker = PrivateAttr(default=None)
-
-    # 增加一个校验器，确保 candidate_pool_size >= top_n 且 min_nodes_to_rerank > top_n，否则可能出现逻辑错误或性能问题
-    @model_validator(mode='after')
-    def check_consistency(self):
-        if self.candidate_pool_size < self.reranker_top_n:
-            raise ValueError(f"candidate_pool_size ({self.candidate_pool_size}) must >= reranker_top_n ({self.reranker_top_n})")
-        if self.min_nodes_to_rerank <= self.reranker_top_n:
-            raise ValueError(f"min_nodes_to_rerank ({self.min_nodes_to_rerank}) must > reranker_top_n ({self.reranker_top_n})")
-        return self
-
-    def _get_reranker(self):
-        if self._reranker is None:
-            self._reranker = FlagEmbeddingReranker(
-                model=self.reranker_model,
-                top_n=self.reranker_top_n,
-            )
-        return self._reranker
-
-    
-    ''' 本质上它把 query 分成两类：
-        “简单题 / 初排已经很稳”
-        不跑 reranker，直接省时间
-
-        “模糊题 / 候选纠缠明显”
-        才让 cross-encoder 出手做精排
-        -----------------------------
-        如何判断是否值得做reranker? 
-        |-> 候选数很少, 没必要rerank, 候选数大于某个阈值,直接选择rerank
-        |-> 如果候选数不算太多(在阈值范围内)，就看首名是不是明显领先 -> 怎么判断领先? 它取前两名的初排分数top1和top2然后算一个相对间隔, 如果同时满足：top1 >= skip_min_score and rel_margin >= skip_min_margin
-    '''
-    def _should_skip_rerank(self, nodes: List[NodeWithScore]) -> bool:
-        if len(nodes) <= self.reranker_top_n:
-            return True
-
-        if len(nodes) >= self.min_nodes_to_rerank:
-            return False
-
-        top1 = nodes[0].score or 0.0
-        top2 = nodes[1].score or 0.0
-        rel_margin = (top1 - top2) / max(abs(top1), 1e-6)
-        return top1 >= self.skip_min_score and rel_margin >= self.skip_min_margin
-
-    def _postprocess_nodes(
-        self, nodes: List[NodeWithScore], query_bundle: Optional[QueryBundle] = None
-    ) -> List[NodeWithScore]:
-        if not nodes:
-            return nodes
-
-        candidates = nodes[: self.candidate_pool_size]
-        if self._should_skip_rerank(candidates):
-            logger.debug(
-                "SelectiveReranker skipped rerank: candidates=%s top1=%.4f top2=%.4f",
-                len(candidates),
-                candidates[0].score or 0.0,
-                candidates[1].score or 0.0 if len(candidates) > 1 else 0.0,
-            )
-            return candidates[: self.reranker_top_n]
-
-        reranked = self._get_reranker().postprocess_nodes(
-            candidates, query_bundle=query_bundle
-        )
-        logger.debug(
-            "SelectiveReranker applied rerank: original=%s candidate_pool=%s returned=%s",
-            len(nodes),
-            len(candidates),
-            len(reranked),
-        )
-        return reranked
-
 
 # ==========================================
 # 自定义混合检索器
@@ -218,9 +137,9 @@ class MultiQueryHybridRetriever(BaseRetriever):
     def _retrieve(self, query_bundle):
         query = query_bundle.query_str
         queries = multi_query_rewrite(query, self.llm)
-        return multi_query_hybrid_retrieve(
-            queries, self.vector_retriever, self.bm25_retriever
-        )
+        results = multi_query_hybrid_retrieve(
+        queries, self.vector_retriever, self.bm25_retriever)
+        return results
 
 # ==========================================
 # 纯Hybrid的检索器
@@ -297,14 +216,6 @@ def build_reranker(config: RagConfig):
             reranker_model=config.reranker_model,
             reranker_top_n=config.reranker_top_n,
             candidate_pool_size=config.reranker_candidate_pool_size,),
-        "selective": lambda: SelectiveReranker(
-            reranker_model=config.reranker_model,
-            reranker_top_n=config.reranker_top_n,
-            candidate_pool_size=config.reranker_candidate_pool_size,
-            min_nodes_to_rerank=config.reranker_min_nodes,
-            skip_min_score=config.reranker_skip_min_score,
-            skip_min_margin=config.reranker_skip_min_margin,
-        ),
     }          
     
     builder = reranker_builders.get(config.reranker_strategy)
@@ -337,7 +248,7 @@ def build_components(
         retriever=retriever,
         node_postprocessors=[reranker, post_processor],
         #node_postprocessors=[post_processor],
-        response_mode="compact",
+        response_mode='compact',
         text_qa_template=qa_prompt
     )
     return query_engine, retriever, reranker

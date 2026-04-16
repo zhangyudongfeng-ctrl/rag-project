@@ -19,7 +19,7 @@ class RagComponents:
     index: Any
     query_engine: Any
     simple_retriever: HybridOnlyRetriever
-    reranker: NoOpReranker | CappedReranker | SelectiveReranker
+    reranker: NoOpReranker | CappedReranker
 
 
 class RagService:

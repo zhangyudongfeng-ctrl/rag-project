@@ -51,15 +51,12 @@ def rrf_fusion(results_list, k=60):
     node_map = {}  # node_id -> node对象
 
     # 遍历并给每一路打分 
-    total_results = sum(len(results) for results in results_list)
-    print(f"去重前总节点数: {total_results}")  
     for results in results_list:
         for rank, node_with_score in enumerate(results):
             node_id = node_with_score.node.node_id
             scores[node_id] = scores.get(node_id, 0) + 1 / (k + rank + 1)
             node_map[node_id] = node_with_score.node
 
-    print(f"去重后的候选节点数: {len(scores)}") 
     sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
     return [NodeWithScore(node=node_map[nid], score=scores[nid]) for nid in sorted_ids]
 
@@ -86,7 +83,14 @@ def multi_query_hybrid_retrieve(queries, vector_retriever, bm25_retriever, k=60)
         bm25_retriever — BM25检索器
         k — RRF平滑系数
 
-    输出：所有query的检索结果统一融合后的 List[NodeWithScore]
+    输出：所有query的检索结果统一融合后的 List[List[NodeWithScore]]
+        all_results = [
+                        [v1, v2, v3, v4],     # query1 的 vector 结果
+                        [b1, b2, b3, b4],     # query1 的 bm25 结果
+                        [v1', v2', v3', v4'],  # query2 的 vector 结果
+                        [b1', b2', b3', b4'],  # query2 的 bm25 结果
+                        ...                    # query3, query4 同理
+                    ]
 
     流程：
         1. 每个query分别用向量检索器和BM25检索器检索（共 4个query × 2路 = 8次检索）
@@ -94,9 +98,9 @@ def multi_query_hybrid_retrieve(queries, vector_retriever, bm25_retriever, k=60)
     """
     all_results = []
     for query in queries:
-        vector_results = vector_retriever.retrieve(query)
+        vector_results = vector_retriever.retrieve(query)   # 返回的类型是List[NodeWithScore]
         bm25_results = bm25_retriever.retrieve(query)
         all_results.append(vector_results)
         all_results.append(bm25_results)
 
-    return rrf_fusion(all_results, k)
+    return rrf_fusion(all_results, k=k)
