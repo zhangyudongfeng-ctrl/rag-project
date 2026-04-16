@@ -27,9 +27,8 @@ def main():
         return
 
     logger.info("Loading index from storage...")
-    storage_context = StorageContext.from_defaults(persist_dir=config.storage_dir)
 
-    RagComponents = rag_service.components
+    components = rag_service.components
 
     from evaluator import load_golden_dataset
 
@@ -63,7 +62,7 @@ def main():
 
     logger.info(f"\nRunning evaluation [{run_name}]...\n")
     results = run_evaluation(
-        components=RagComponents,
+        components=components,
         llm=Settings.llm,
         cases=selected_cases,
         use_llm_judge=True, # 改成 False 可省 API 费用，只跑关键词指标
