@@ -18,8 +18,6 @@ REWRITE_PROMPT = """你是一个搜索查询改写助手。请将用户的问题
 
 用户问题：{query}
 """
-
-# TODO 需要在这里修改改写后的问题个数, 4个问题（原始问题 + 3个改写）对后续检索性能有较大影响
 def multi_query_rewrite(query: str, llm: LLM) -> list[str]:
     """
     Multi-Query改写：把一个问题变成多个不同角度的问题
@@ -45,5 +43,4 @@ def multi_query_rewrite(query: str, llm: LLM) -> list[str]:
 
     # 原始query + 改写query，确保原始问题不丢
     all_queries = [query] + rewritten
-    print(f"问题总数:{len(all_queries)}")
     return all_queries

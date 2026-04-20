@@ -1,3 +1,8 @@
+'''
+ * @Author       : MatthewZhang
+ * @Date         : 2026-04-05 15:57:23
+ * @Description  : 
+'''
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core import Settings
 import logging
@@ -35,7 +40,7 @@ classify_prompt = PromptTemplate(
 # 输入：question
 # 输出：问题的标签
 # 过程：通过LLM对问题进行分类, 规则兜底, 主要有三类：正常问题normal、位置类问题position、跨文档类问题multi_doc. 只要分类失败,统一降级到normal, 避免路由失败导致整个查询失败
-def classify_intent(question):
+def classify_intent(question, llm) -> str:
     # 规则优先：position的关键词是有限的
     position_keywords = ["最后一句", "第一句", "开头", "结尾", "末尾"]
     if any(kw in question for kw in position_keywords):
@@ -44,7 +49,7 @@ def classify_intent(question):
     # 规则无法判断的，再交给LLM
     prompt = classify_prompt.format(question=question)
     try:
-        response = Settings.llm.complete(prompt)
+        response = llm.complete(prompt)
     except (TimeoutError, ConnectionError, ValueError) as e:
         logger.warning(f"classify_intent LLM调用失败: {e}")
         return "normal"   # 分类失败时降级到兜底路由

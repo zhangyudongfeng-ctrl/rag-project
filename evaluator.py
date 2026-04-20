@@ -570,7 +570,7 @@ def run_evaluation(components: "RagComponents", llm, cases: List[TestCase] = Non
 
         start_time = time.time()
             
-        intent = classify_intent(case.question)
+        intent = classify_intent(case.question, components.local_llm)
         result = route_query(case.question, intent, components)
         latency = time.time() - start_time
     

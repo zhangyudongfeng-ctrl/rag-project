@@ -6,6 +6,7 @@
 import os
 from dataclasses import dataclass
 
+from llama_index.llms.openai_like import OpenAILike
 from config import RagConfig
 from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker, build_components
 from rag_compotents import RagComponents
@@ -13,10 +14,15 @@ from router import route_query
 from index_factory import load_or_build_index, rebuild_index_from_LlamaIndex
 from intent_classifier import classify_intent
 
-
 class RagService:
     def __init__(self, config: RagConfig):
         self.config = config
+        self.local_llm = OpenAILike(
+            api_base=self.config.local_llm_base_url,
+            api_key="not-needed",
+            model=self.config.local_llm_model,
+            is_chat_model=True,  # 让传输格式匹配模型的训练格式, False发纯字符串, True发messages数组
+        )
         self.components = self._build_components()
 
     '''
@@ -44,6 +50,7 @@ class RagService:
             query_engine=query_engine,
             simple_retriever=simple_retriever,
             reranker=reranker,
+            local_llm = self.local_llm
         )
 
     def reload(self) -> None:
@@ -52,7 +59,7 @@ class RagService:
     
     # 有了路由机制后,所有问题都会经过这个函数，先进行意图分类，再路由到不同的处理逻辑
     def query(self, question: str) -> dict:
-        intent = classify_intent(question)
+        intent = classify_intent(question, self.local_llm)
         return route_query(question, intent, self.components)
 
     

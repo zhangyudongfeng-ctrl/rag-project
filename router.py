@@ -121,7 +121,7 @@ def handle_position(question: str, components: "RagComponents") -> dict:
 
         # 加上防御,如果LLM没有正确提取到位置，或者提取到了但不是开头或结尾，就当做普通问题处理
         if target not in ("开头", "结尾"):
-            return handle_normal(question, components.query_engine)
+            return handle_normal(question, components)
         
         # 2. 过滤节点 (注意：这里直接操作 index.docstore.docs 比较重，但现阶段先跑通)
         all_nodes = components.index.docstore.docs.values()
@@ -171,7 +171,7 @@ def handle_multi_doc(question: str, components: "RagComponents")-> dict:
           f"问题：{question}\n"
           "子问题：\n") # 即使这样写，LLM偶尔还是会输出编号、空行、解释性文字。
     try:
-        response = Settings.llm.complete(prompt)
+        response = components.local_llm.complete(prompt)
     except (TimeoutError, ConnectionError, ValueError) as e:
         logger.warning(f"handle_multi_doc-response LLM调用失败: {e}")
         return {"answer": "抱歉，服务暂时不可用，请稍后重试。", "sources": []}
@@ -185,8 +185,6 @@ def handle_multi_doc(question: str, components: "RagComponents")-> dict:
         for sub_question in sub_questions:
             f = executor.submit(components.simple_retriever.retrieve, sub_question)  # 返回类型concurrent.futures._base.Future
             futures.append(f)
-        # ← 只检索，返回NodeWithScore列表
-        # nodes = components.simple_retriever.retrieve(sub_question)
         # TODO 目前不用reranker方案,耗时太大 -> 子问题已经很精确了，hybrid检索的RRF融合排序就够用，直接取前3个
         # reranked = reranker.postprocess_nodes(nodes, query_str=sub_question)
         for f in futures:
