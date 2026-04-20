@@ -35,7 +35,7 @@ def main():
     cases = load_golden_dataset()
 
     # 评测控制
-    EVAL_MODE = "single"   # "full" / "single" / "indices"
+    EVAL_MODE = "full"   # "full" / "single" / "indices"
     EVAL_CASE_INDEX = 30     # single 模式用 
     EVAL_CASE_INDICES = [
         1, # 道德经中关于水的论述

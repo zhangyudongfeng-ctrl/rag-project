@@ -234,8 +234,8 @@ def create_golden_dataset() -> List[TestCase]:
             question="土方岁三是修佛的吗？",
             expected_answer="文档中没有相关内容。土方岁三是武士，文档中未提及他修佛。",
             expected_keywords=["没有", "武士"],
-            expected_source="燃烧吧！剑",
-            category="跨文档",
+            expected_source="",
+            category="对比",
             difficulty="hard",
         ),
         TestCase(
@@ -243,7 +243,7 @@ def create_golden_dataset() -> List[TestCase]:
             expected_answer="文档中没有将土方岁三与佛学联系的内容。这是跨文档推理，需要分别从两本书检索再综合。",
             expected_keywords=["有为法", "无为法"],
             expected_source="",
-            category="跨文档",
+            category="对比",
             difficulty="hard",
         ),
 

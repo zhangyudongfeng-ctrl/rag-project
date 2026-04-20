@@ -7,6 +7,7 @@ from typing import Tuple, Optional, Any
 from llama_index.core import Settings
 from engine import HybridOnlyRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 import logging
 
 from rag_compotents import RagComponents
@@ -178,12 +179,24 @@ def handle_multi_doc(question: str, components: "RagComponents")-> dict:
     sub_questions = [line.strip() for line in response.text.strip().split(sep="\n") if line.strip()]    # 简单清洗
     # 每个子问题走现有检索管线（Hybrid Search + Reranker，不需要LLM）
     all_nodes = []
-    for i, sub_question in enumerate(sub_questions):
+    futures = []
+    # 并发场景: 把多个子问题同时扔进去检索, 结果类型nodes是concurrent.futures._base.Future, 需要改为List[NodeWithScore]类型
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for sub_question in sub_questions:
+            f = executor.submit(components.simple_retriever.retrieve, sub_question)  # 返回类型concurrent.futures._base.Future
+            futures.append(f)
         # ← 只检索，返回NodeWithScore列表
-        nodes = components.simple_retriever.retrieve(sub_question)
+        # nodes = components.simple_retriever.retrieve(sub_question)
         # TODO 目前不用reranker方案,耗时太大 -> 子问题已经很精确了，hybrid检索的RRF融合排序就够用，直接取前3个
         # reranked = reranker.postprocess_nodes(nodes, query_str=sub_question)
-        all_nodes.extend(nodes[:3]) # extend展平，不是append
+        for f in futures:
+            try:
+                nodes = f.result(timeout=3)
+                all_nodes.extend(nodes[:3]) # extend展平，不是append
+            except (TimeoutError, CancelledError) as e:
+                logger.warning(f"并发执行失败: {e}")
+                # 虽然失败, 但all_nodes里面已经存在了部分子问题的前3个结果,可以继续处理
+                continue
     context = "\n\n".join([n.node.text for n in all_nodes])
     prompt = f"根据以下参考资料回答问题。\n\n参考资料：\n{context}\n\n问题：{question}\n回答："
 
