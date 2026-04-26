@@ -240,10 +240,14 @@ def route_query(question: str, intent: str, components: "RagComponents") -> dict
 
 # 新增: 流式查询
 # 输入: 和普通query一样
-# 输出: 目前仅针对normal问题进行流式查询, 所以只yield handle_normal
-def route_query_stream(question: str, components: "RagComponents") -> Iterator[str]:
-    print(f"  → normal question is streaming output, question: {question[:30]}")
-    yield from handle_normal_stream(question, components=components)
+# 输出: 目前仅针对normal问题进行流式查询, 其余两种position和multi_doc问题依旧走原来的查询
+def route_query_stream(question: str, intent: str, components: "RagComponents") -> Iterator[str]:
+    print(f"  → intent: {intent}, question: {question[:30]}")
+    if intent == 'normal':
+        yield from handle_normal_stream(question, components)
+    else:
+        result = route_query(question, intent, components)
+        yield result["answer"]
 
 
 '''

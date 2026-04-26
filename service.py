@@ -66,7 +66,8 @@ class RagService:
                 # yield {"type": "token", "data": "段"}
                 # yield {"type": "done", "data": {}}
     def query_stream(self, question: str) -> Iterator[str]:
-        for chunk in route_query_stream(question, self.components):
+        intent = classify_intent(question, self.local_llm)
+        for chunk in route_query_stream(question, intent, self.components):
             yield chunk
 
     
