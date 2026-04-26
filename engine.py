@@ -6,7 +6,7 @@ main和run_eval都从这里获取query_engine，改一处全生效
 import logging
 from typing import List, Optional
 
-from llama_index.core import QueryBundle, Settings
+from llama_index.core import QueryBundle, Settings, get_response_synthesizer
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever
@@ -227,6 +227,19 @@ def build_reranker(config: RagConfig):
 # 构建查询引擎（唯一入口）
 # ==========================================
 '''
+ * @description: 构建synthesizer, 是否进行流式输出
+ * @param {bool} streaming
+ * @return {*} None
+'''
+def build_synthesizer(streaming: bool):
+    response_synthesizer = get_response_synthesizer(
+        response_mode="compact",
+        text_qa_template=qa_prompt,
+        streaming=streaming,
+    )
+    return response_synthesizer
+
+'''
  * @description: 向外界暴漏查询引擎/检索器/重排器
  * @param {*} index, RagConfig
  * @return {*} query_engine, retriever, reranker
@@ -242,10 +255,19 @@ def build_components(
     # 然后 post_processor 对 auxiliary 类型的 chunk 在真实分数上降权,
     # 最终影响 top_n 截断的取舍
     post_processor = Auxiliary_downweight_postprocessor(weight=config.auxiliary_weight) # 在实例化时传入字段值，而字段值由 Pydantic 初始化机制接收和绑定
-    query_engine = RetrieverQueryEngine.from_args(
+
+    not_streaming_synthesizer = build_synthesizer(streaming=False)
+    streaming_synthesizer = build_synthesizer(streaming=True)
+
+    query_engine = RetrieverQueryEngine(
         retriever=retriever,
+        response_synthesizer=not_streaming_synthesizer,
         node_postprocessors=[reranker, post_processor],
-        response_mode='compact',
-        text_qa_template=qa_prompt
     )
-    return query_engine, retriever, reranker
+
+    streaming_query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        response_synthesizer=streaming_synthesizer,
+        node_postprocessors=[reranker, post_processor],
+    )
+    return query_engine, streaming_query_engine, retriever, reranker

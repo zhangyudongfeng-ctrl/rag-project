@@ -6,6 +6,7 @@
 import time
 
 from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from config import configure_settings, load_config
@@ -50,6 +51,13 @@ def query(request: QueryRequest):
         answer=str(result["answer"]),
         sources=[SourceNode(**source) for source in result["sources"]],
         time_seconds=elapsed,
+    )
+
+@app.post("/query_stream")
+def query_stream(request: QueryRequest):
+    return StreamingResponse(
+        rag_service.query_stream(request.question),
+        media_type="text/plain",
     )
 
 

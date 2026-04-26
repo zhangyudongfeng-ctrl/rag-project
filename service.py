@@ -6,11 +6,12 @@
 import os
 from dataclasses import dataclass
 
+from collections.abc import Iterator
 from llama_index.llms.openai_like import OpenAILike
 from config import RagConfig
 from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker, build_components
 from rag_compotents import RagComponents
-from router import route_query
+from router import route_query, route_query_stream
 from index_factory import load_or_build_index, rebuild_index_from_LlamaIndex
 from intent_classifier import classify_intent
 
@@ -37,7 +38,7 @@ class RagService:
 
         # 自定义文本切分方案
         index = load_or_build_index(self.config)
-        query_engine, _, reranker = build_components(
+        query_engine, streaming_query_engine, _, reranker = build_components(
             index,
             config=self.config,
         )
@@ -48,6 +49,7 @@ class RagService:
         return RagComponents(
             index=index,
             query_engine=query_engine,
+            streaming_query_engine=streaming_query_engine,
             simple_retriever=simple_retriever,
             reranker=reranker,
             local_llm = self.local_llm
@@ -55,6 +57,17 @@ class RagService:
 
     def reload(self) -> None:
         self.components = self._build_components()
+
+    # 前端进行流式传输的查询接口
+    # 输入: question
+    # 输出: 生成器: yield {"type": "sources", "data": sources}
+                # yield {"type": "token", "data": "第"}
+                # yield {"type": "token", "data": "一"}
+                # yield {"type": "token", "data": "段"}
+                # yield {"type": "done", "data": {}}
+    def query_stream(self, question: str) -> Iterator[str]:
+        for chunk in route_query_stream(question, self.components):
+            yield chunk
 
     
     # 有了路由机制后,所有问题都会经过这个函数，先进行意图分类，再路由到不同的处理逻辑

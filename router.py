@@ -3,6 +3,7 @@ router.py：意图分类 + 路由分发 + 三个handler
 整个项目的数据格式就三种：chunk（字典）→ TextNode（加了id）→ NodeWithScore（加了分数）
 """
 
+from collections.abc import Iterator
 from typing import Tuple, Optional, Any
 from llama_index.core import Settings
 from engine import HybridOnlyRetriever
@@ -53,6 +54,19 @@ def handle_normal(question: str, components: "RagComponents") -> dict:
             "answer": response.response,
             "sources": format_nodes_to_sources(response.source_nodes)
         }
+
+'''
+ * @description: 新增：yield token / sources / done
+ * @param {str} question
+ * @param {*} components
+ * @return {Iterator[str]} 
+'''
+def handle_normal_stream(question: str, components: "RagComponents")-> Iterator[str]:
+    response = components.streaming_query_engine.query(question)
+    # query() 返回的不是普通字符串迭代器，而是一个 StreamingResponse 对象；真正逐 token 输出的生成器在 response.response_gen 里
+    for token in response.response_gen:
+        if token:
+            yield token
 
 '''
  * @description: 只返回结果位置的关键词
@@ -223,6 +237,13 @@ def route_query(question: str, intent: str, components: "RagComponents") -> dict
     print(f"  → intent: {intent}, question: {question[:30]}")
     handler = HANDLER_MAP.get(intent, handle_normal)
     return handler(question, components)
+
+# 新增: 流式查询
+# 输入: 和普通query一样
+# 输出: 目前仅针对normal问题进行流式查询, 所以只yield handle_normal
+def route_query_stream(question: str, components: "RagComponents") -> Iterator[str]:
+    print(f"  → normal question is streaming output, question: {question[:30]}")
+    yield from handle_normal_stream(question, components=components)
 
 
 '''

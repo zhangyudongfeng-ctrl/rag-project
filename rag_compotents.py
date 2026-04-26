@@ -12,6 +12,7 @@ from engine import CappedReranker, HybridOnlyRetriever, NoOpReranker
 class RagComponents:
     index: Any
     query_engine: Any
+    streaming_query_engine: Any
     simple_retriever: HybridOnlyRetriever
     reranker: NoOpReranker | CappedReranker
     local_llm: Any
