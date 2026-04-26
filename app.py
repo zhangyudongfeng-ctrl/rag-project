@@ -32,15 +32,82 @@ st.markdown("""
     /* 标题区域 */
     .title-container {
         text-align: center;
-        padding: 2rem 0 1rem 0;
+        padding: 1.5rem 0 1rem 0;
     }
-    .title-icon {
-        font-size: 3rem;
-        animation: pulse 2s ease-in-out infinite;
+    .radar-icon {
+        position: relative;
+        width: 156px;
+        height: 156px;
+        margin: 0 auto 1rem auto;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background:
+            radial-gradient(circle at 50% 50%, rgba(255,255,255,0.16) 0 25%, transparent 26%),
+            conic-gradient(from 210deg, #31d7ff, #7bff9d, #ffd166, #ff7a59, #31d7ff);
+        box-shadow: 0 0 28px rgba(49, 215, 255, 0.22);
+        animation: radar-glow 2.8s ease-in-out infinite;
     }
-    @keyframes pulse {
-        0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.1); }
+    .radar-icon::before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border-radius: 50%;
+        background:
+            repeating-conic-gradient(from 0deg, rgba(255,255,255,0.88) 0deg 1.2deg, transparent 1.2deg 3.8deg),
+            radial-gradient(circle, transparent 0 58%, rgba(8, 14, 20, 0.94) 59%);
+        mask: radial-gradient(circle, transparent 0 45%, #000 46% 72%, transparent 73%);
+    }
+    .radar-icon::after {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border-radius: 50%;
+        border: 5px solid rgba(255,255,255,0.92);
+        box-shadow: inset 0 0 18px rgba(49, 215, 255, 0.18);
+    }
+    .radar-mark {
+        position: relative;
+        z-index: 2;
+        width: 68px;
+        height: 68px;
+    }
+    .radar-mark::before,
+    .radar-mark::after {
+        content: "";
+        position: absolute;
+        border: 7px solid #f7fbff;
+        transform: rotate(45deg);
+    }
+    .radar-mark::before {
+        width: 38px;
+        height: 38px;
+        left: 4px;
+        top: 4px;
+        border-right-color: transparent;
+        border-bottom-color: transparent;
+    }
+    .radar-mark::after {
+        width: 34px;
+        height: 34px;
+        right: 4px;
+        bottom: 4px;
+        border-left-color: transparent;
+        border-top-color: transparent;
+    }
+    .radar-dot {
+        position: absolute;
+        z-index: 3;
+        width: 20px;
+        height: 20px;
+        border: 5px solid #ff8a5c;
+        border-radius: 4px;
+        transform: rotate(45deg);
+        background: rgba(255,255,255,0.08);
+    }
+    @keyframes radar-glow {
+        0%, 100% { filter: saturate(1); transform: scale(1); }
+        50% { filter: saturate(1.35); transform: scale(1.025); }
     }
     .title-text {
         font-size: 1.8rem;
@@ -89,7 +156,10 @@ st.markdown("""
 # ==========================================
 st.markdown("""
 <div class="title-container">
-    <div class="title-icon">⚛</div>
+    <div class="radar-icon">
+        <div class="radar-mark"></div>
+        <div class="radar-dot"></div>
+    </div>
     <div class="title-text">RAG 智能问答系统</div>
     <div class="subtitle">基于文献检索的问答引擎 · Multi-Query + Hybrid Search + Rerank</div>
 </div>
@@ -141,39 +211,30 @@ with st.sidebar:
 # ==========================================
 # 主界面：问答
 # ==========================================
-question = st.text_input("请输入问题")
-ask = st.button("🔍 提问")
+with st.form("query_form", clear_on_submit=False):
+    question = st.text_input("请输入问题")
+    ask = st.form_submit_button("Search")
 
 if ask and question.strip():
     with st.spinner("检索中..."):
         try:
             resp = requests.post(
-                f"{API_BASE}/query",
+                f"{API_BASE}/query_stream",
                 json={"question": question},
-                timeout=120
+                timeout=120,
+                stream=True,
             )
             
             if resp.status_code == 200:
-                data = resp.json()
+                resp.encoding = "utf-8"
+                st.markdown("### Answer")
+                answer_box = st.empty()
+                answer = ""
+                for chunk in resp.iter_content(chunk_size=1, decode_unicode=True):
+                    if chunk:
+                        answer += chunk
+                        answer_box.markdown(answer)
                 
-                # 回答
-                st.markdown("### 📝 回答")
-                st.markdown(data["answer"])
-                
-                # 耗时
-                st.caption(f"⏱ 响应耗时：{data['time_seconds']} 秒")
-                
-                # 出处
-                st.markdown("### 📚 参考来源")
-                for i, src in enumerate(data["sources"]):
-                    with st.expander(
-                        f"片段 {i+1} · 相关度 {src['score']:.3f} · {src['source_file']}"
-                    ):
-                        if src["heading"]:
-                            st.markdown(f"**章节：** {src['heading']}")
-                        if src["position"]:
-                            st.markdown(f"**位置：** {src['position']}")
-                        st.markdown(f"**内容：**\n\n{src['text']}")
             else:
                 st.error(f"查询失败：{resp.text}")
                 
