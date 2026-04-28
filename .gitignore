@@ -13,3 +13,6 @@ env/
 .ruff_cache/
 
 storage/
+.env
+.env.*
+!.env.example

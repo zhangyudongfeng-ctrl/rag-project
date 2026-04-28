@@ -22,7 +22,7 @@ st.set_page_config(
 API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
 
 # ==========================================
-# 自定义样式
+# 自定义样式 (复刻赛博朋克彩色波纹效果)
 # ==========================================
 st.markdown("""
 <style>
@@ -33,82 +33,182 @@ st.markdown("""
     .title-container {
         text-align: center;
         padding: 1.5rem 0 1rem 0;
+        overflow: hidden;
     }
-    .radar-icon {
+
+    /* 赛博朋克波纹核心容器 */
+    .idus-container {
         position: relative;
-        width: 156px;
-        height: 156px;
-        margin: 0 auto 1rem auto;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background:
-            radial-gradient(circle at 50% 50%, rgba(255,255,255,0.16) 0 25%, transparent 26%),
-            conic-gradient(from 210deg, #31d7ff, #7bff9d, #ffd166, #ff7a59, #31d7ff);
-        box-shadow: 0 0 28px rgba(49, 215, 255, 0.22);
-        animation: radar-glow 2.8s ease-in-out infinite;
+        width: 260px;
+        height: 260px;
+        margin: 0 auto 1.5rem auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
-    .radar-icon::before {
-        content: "";
+
+    /* 最外层环境光晕 */
+    .idus-glow {
         position: absolute;
-        inset: 10px;
+        inset: -20px;
         border-radius: 50%;
-        background:
-            repeating-conic-gradient(from 0deg, rgba(255,255,255,0.88) 0deg 1.2deg, transparent 1.2deg 3.8deg),
-            radial-gradient(circle, transparent 0 58%, rgba(8, 14, 20, 0.94) 59%);
-        mask: radial-gradient(circle, transparent 0 45%, #000 46% 72%, transparent 73%);
+        background: radial-gradient(circle, rgba(49,215,255,0.15) 0%, transparent 60%);
+        animation: pulse-glow 3s ease-in-out infinite alternate;
     }
-    .radar-icon::after {
-        content: "";
+
+    /* ====== 外层彩色分段波纹 (核心视觉) ====== */
+    .idus-wave-outer {
         position: absolute;
-        inset: 18px;
+        inset: 0;
         border-radius: 50%;
-        border: 5px solid rgba(255,255,255,0.92);
-        box-shadow: inset 0 0 18px rgba(49, 215, 255, 0.18);
+        /* 彩色渐变：青 -> 绿 -> 黄 -> 橙 -> 青 */
+        background: conic-gradient(from 210deg, #31d7ff, #7bff9d, #ffd166, #ff7a59, #31d7ff);
+        /* 核心技巧：使用双重遮罩 (径向镂空环 + 圆锥重复分割) 形成频谱条纹 */
+        -webkit-mask:
+            radial-gradient(circle, transparent 55%, #000 56%, #000 66%, transparent 67%),
+            repeating-conic-gradient(from 0deg, #000 0deg, #000 1.5deg, transparent 1.5deg, transparent 3deg);
+        -webkit-mask-composite: source-in;
+        mask-composite: intersect;
+        animation: spin-wave 20s linear infinite;
+        filter: drop-shadow(0 0 8px rgba(123, 255, 157, 0.4));
     }
-    .radar-mark {
-        position: relative;
-        z-index: 2;
-        width: 68px;
-        height: 68px;
-    }
-    .radar-mark::before,
-    .radar-mark::after {
-        content: "";
+
+    /* ====== 内层细条纹辅助波纹 ====== */
+    .idus-wave-inner {
         position: absolute;
-        border: 7px solid #f7fbff;
-        transform: rotate(45deg);
+        inset: 22px;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg, #31d7ff, #7bff9d, #ffd166, #ff7a59, #31d7ff);
+        -webkit-mask:
+            radial-gradient(circle, transparent 61%, #000 62%, #000 65%, transparent 66%),
+            repeating-conic-gradient(from 0deg, #000 0deg, #000 0.8deg, transparent 0.8deg, transparent 2deg);
+        -webkit-mask-composite: source-in;
+        mask-composite: intersect;
+        animation: spin-wave-reverse 25s linear infinite;
+        opacity: 0.85;
     }
-    .radar-mark::before {
-        width: 38px;
-        height: 38px;
-        left: 4px;
-        top: 4px;
-        border-right-color: transparent;
-        border-bottom-color: transparent;
-    }
-    .radar-mark::after {
-        width: 34px;
-        height: 34px;
-        right: 4px;
-        bottom: 4px;
+
+    /* ====== 内部机械线圈 HUD ====== */
+    .idus-ring-1 {
+        position: absolute;
+        inset: 52px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.9);
         border-left-color: transparent;
-        border-top-color: transparent;
+        border-right-color: transparent;
+        animation: spin-fast 5s linear infinite;
+        box-shadow: inset 0 0 10px rgba(49, 215, 255, 0.4), 0 0 10px rgba(49, 215, 255, 0.4);
     }
-    .radar-dot {
+
+    .idus-ring-2 {
         position: absolute;
-        z-index: 3;
-        width: 20px;
-        height: 20px;
-        border: 5px solid #ff8a5c;
-        border-radius: 4px;
-        transform: rotate(45deg);
-        background: rgba(255,255,255,0.08);
+        inset: 64px;
+        border-radius: 50%;
+        border: 1px dashed rgba(49, 215, 255, 0.7);
+        animation: spin-slow-reverse 15s linear infinite;
     }
-    @keyframes radar-glow {
-        0%, 100% { filter: saturate(1); transform: scale(1); }
-        50% { filter: saturate(1.35); transform: scale(1.025); }
+
+    /* ====== 外围科幻准星标记 ====== */
+    .idus-markers {
+        position: absolute;
+        inset: -15px;
+        border-radius: 50%;
+        border: 1px solid rgba(49, 215, 255, 0.15);
+        box-shadow: 0 0 20px rgba(49,215,255,0.05);
     }
+    .idus-markers::before, .idus-markers::after {
+        content: "";
+        position: absolute;
+        background: rgba(49, 215, 255, 0.6);
+    }
+    .idus-markers::before {
+        top: -8px; bottom: -8px; left: calc(50% - 0.5px); width: 1px;
+    }
+    .idus-markers::after {
+        left: -8px; right: -8px; top: calc(50% - 0.5px); height: 1px;
+    }
+
+    /* ====== 中心 Logo 核心 ====== */
+    .idus-core {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(10,15,25,0.9) 40%, rgba(10,15,25,0.4) 100%);
+    }
+
+    /* 类似图片中的中心镂空三角形 */
+    .idus-triangle {
+        width: 0; 
+        height: 0; 
+        border-left: 14px solid transparent;
+        border-right: 14px solid transparent;
+        border-bottom: 24px solid #fff;
+        position: relative;
+        margin-bottom: 4px;
+        filter: drop-shadow(0 0 6px rgba(49,215,255,0.8));
+    }
+    .idus-triangle::after {
+        content: "";
+        position: absolute;
+        top: 7px;
+        left: -7px;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        /* 模拟镂空 (此处使用 Streamlit 深色主题的近似背景色) */
+        border-bottom: 12px solid #0e1117; 
+    }
+
+    .idus-text {
+        font-family: 'Arial Black', Impact, sans-serif;
+        font-size: 1.8rem;
+        line-height: 1.2;
+        font-weight: 900;
+        letter-spacing: 4px;
+        color: #fff;
+        text-shadow: 0 0 8px rgba(255,255,255,0.5), 0 0 15px rgba(49,215,255,0.6);
+    }
+
+    .idus-subtext {
+        font-family: 'Courier New', monospace;
+        font-size: 0.45rem;
+        color: #ffd166;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-top: 2px;
+        text-shadow: 0 0 5px rgba(255, 209, 102, 0.5);
+    }
+
+    /* ================= 动画关键帧 ================= */
+    @keyframes spin-wave {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes spin-wave-reverse {
+        0% { transform: rotate(360deg); }
+        100% { transform: rotate(0deg); }
+    }
+    @keyframes spin-fast {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes spin-slow-reverse {
+        0% { transform: rotate(360deg); }
+        100% { transform: rotate(0deg); }
+    }
+    @keyframes pulse-glow {
+        0% { transform: scale(0.95); opacity: 0.5; }
+        100% { transform: scale(1.05); opacity: 0.8; }
+    }
+
+    /* 原有文本样式保留 */
     .title-text {
         font-size: 1.8rem;
         font-weight: 600;
@@ -120,48 +220,30 @@ st.markdown("""
         color: #888;
         margin-top: 0.3rem;
     }
-    
-    /* 出处卡片 */
-    .source-card {
-        background: #1E1E2E;
-        border: 1px solid #333;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 0.5rem 0;
-    }
-    .source-header {
-        color: #7B8CDE;
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-    .source-text {
-        color: #CCC;
-        font-size: 0.85rem;
-        margin-top: 0.5rem;
-        line-height: 1.5;
-    }
-    .score-badge {
-        background: #2D2D3F;
-        color: #7B8CDE;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ==========================================
-# 标题区域
+# 标题区域 (替换为新的赛博朋克UI)
 # ==========================================
 st.markdown("""
 <div class="title-container">
-    <div class="radar-icon">
-        <div class="radar-mark"></div>
-        <div class="radar-dot"></div>
-    </div>
-    <div class="title-text">RAG 智能问答系统</div>
-    <div class="subtitle">基于文献检索的问答引擎 · Multi-Query + Hybrid Search + Rerank</div>
+<div class="idus-container">
+<div class="idus-glow"></div>
+<div class="idus-wave-outer"></div>
+<div class="idus-wave-inner"></div>
+<div class="idus-ring-1"></div>
+<div class="idus-ring-2"></div>
+<div class="idus-markers"></div>
+<div class="idus-core">
+<div class="idus-triangle"></div>
+<div class="idus-text">R.A.G</div>
+<div class="idus-subtext">Intelligent System</div>
+</div>
+</div>
+<div class="title-text">RAG 智能问答系统</div>
+<div class="subtitle">基于文献检索的问答引擎 · Multi-Query + Hybrid Search + Rerank</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -216,32 +298,30 @@ with st.form("query_form", clear_on_submit=False):
     ask = st.form_submit_button("Search")
 
 if ask and question.strip():
-    with st.spinner("检索中..."):
-        try:
-            resp = requests.post(
-                f"{API_BASE}/query_stream",
-                json={"question": question},
-                timeout=120,
-                stream=True,
-            )
+    try:
+        resp = requests.post(
+            f"{API_BASE}/query_stream",
+            json={"question": question},
+            timeout=120,
+            stream=True,
+        )
+        
+        if resp.status_code == 200:
+            resp.encoding = "utf-8"
+            st.markdown("### Answer")
+            answer_box = st.empty()
+            answer = ""
+            for chunk in resp.iter_content(chunk_size=1, decode_unicode=True):
+                if chunk:
+                    answer += chunk
+                    answer_box.markdown(answer)
             
-            if resp.status_code == 200:
-                resp.encoding = "utf-8"
-                st.markdown("### Answer")
-                answer_box = st.empty()
-                answer = ""
-                for chunk in resp.iter_content(chunk_size=1, decode_unicode=True):
-                    if chunk:
-                        answer += chunk
-                        answer_box.markdown(answer)
-                
-            else:
-                st.error(f"查询失败：{resp.text}")
-                
-        except requests.ConnectionError:
-            st.error("无法连接后端服务，请确认 FastAPI 已启动")
-        except requests.Timeout:
-            st.error("查询超时，请稍后重试")
-
+        else:
+            st.error(f"查询失败：{resp.text}")
+            
+    except requests.ConnectionError:
+        st.error("无法连接后端服务，请确认 FastAPI 已启动")
+    except requests.Timeout:
+        st.error("查询超时，请稍后重试")
 elif ask:
     st.warning("请输入问题")

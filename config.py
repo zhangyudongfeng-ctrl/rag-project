@@ -17,7 +17,7 @@ class RagConfig:
     deepseek_api_key: str
     llm_model: str = "deepseek-v4-flash"
     # 本地模型配置（值，不是对象）
-    local_llm_base_url: str = "http://198.18.0.1:1234/v1"
+    local_llm_base_url: str = os.getenv("LOCAL_LLM_BASE_URL", "http://198.18.0.1:1234/v1")
     local_llm_model: str = "qwen/qwen3.5-9b"
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
